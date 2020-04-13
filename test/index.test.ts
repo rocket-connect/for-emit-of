@@ -28,9 +28,11 @@ describe("forEmitOf", () => {
     });
 
     it("should throw stream has ended", async () => {
-      const read = fs.createReadStream(path.join(__dirname, "../package.json"));
-
       try {
+        const read = fs.createReadStream(
+          path.join(__dirname, "../package.json")
+        );
+
         // @ts-ignore
         read.readableEnded = true;
 
@@ -39,6 +41,23 @@ describe("forEmitOf", () => {
         throw new Error();
       } catch ({ message }) {
         expect(message).to.be.a("string").to.equal("stream has ended");
+      }
+    });
+
+    it("should throw transform must be a function", () => {
+      try {
+        const read = fs.createReadStream(
+          path.join(__dirname, "../package.json")
+        );
+
+        // @ts-ignore
+        forEmitOf(read, { transform: [] });
+
+        throw new Error();
+      } catch ({ message }) {
+        expect(message)
+          .to.be.a("string")
+          .to.equal("transform must be a function");
       }
     });
   });
@@ -56,6 +75,25 @@ describe("forEmitOf", () => {
       }
 
       expect(result).to.equal("test");
+    });
+
+    it("should return a iterator and use a transform to JSON", async () => {
+      const read = fs.createReadStream(path.join(__dirname, "../package.json"));
+
+      const iterator = forEmitOf<string>(read, {
+        transform: (buff) => {
+          return JSON.parse(buff.toString());
+        },
+      });
+
+      for await (const chunk of iterator) {
+        expect(chunk)
+          .to.be.a("object")
+          .to.have.property("name")
+          .to.equal("for-emit-of");
+
+        break;
+      }
     });
   });
 });
