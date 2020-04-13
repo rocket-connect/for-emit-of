@@ -48,11 +48,15 @@ export default <T>(
         throw error;
       }
 
+      /* We do not want to block the process!
+         This call allows other processes
+         a chance to execute.
+       */
       await sleep(0);
 
-      const [result, ...restOfBuffers] = buffers;
+      const [result, ...rest] = buffers;
 
-      buffers = [...restOfBuffers];
+      buffers = rest;
 
       if (!result) {
         continue;
