@@ -1,37 +1,44 @@
 import { EventEmitter } from "events";
 import { Readable, Writable } from "stream";
+import * as util from "util";
+
+const sleep = util.promisify(setTimeout);
 
 interface Options {
-  event?: string;
+  event: string;
+  error: string;
 }
+
+const defaults: Options = { event: "data", error: "error" };
 
 export default <T>(
   emitter: EventEmitter | Readable | Writable,
-  options?: Options
-): AsyncIterator<T> => {
+  options: Options = defaults
+): AsyncIterable<T> => {
+  options = { ...defaults, ...options };
+
   if (!(emitter instanceof EventEmitter)) {
     throw new Error("emitter must be a instance of EventEmitter");
   }
 
-  ["readableEnded", "writableEnded"].forEach((key) => {
-    if (key in emitter && Boolean(emitter[key])) {
-      throw new Error("stream has ended");
-    }
-  });
+  if (emitter["readableEnded"] || emitter["writableEnded"]) {
+    throw new Error("stream has ended");
+  }
 
   let buffers: T[] = [];
   let error: Error;
   let active = true;
 
-  emitter.on("data", (buff) => buffers.push(buff));
+  emitter.on(options.event, (buff) => buffers.push(buff));
 
-  emitter.on("error", (err) => {
+  emitter.once(options.error, (err) => {
     error = err;
-    active = false;
   });
 
-  emitter.on("end", () => {
-    active = false;
+  ["close", "end"].forEach((event) => {
+    emitter.once(event, () => {
+      active = false;
+    });
   });
 
   // eslint-disable-next-line @typescript-eslint/explicit-function-return-type
@@ -40,6 +47,8 @@ export default <T>(
       if (error) {
         throw error;
       }
+
+      await sleep(0);
 
       const [result, ...restOfBuffers] = buffers;
 
@@ -53,7 +62,7 @@ export default <T>(
     }
   }
 
-  const iterator = forEmitOf();
+  const iterator: AsyncIterable<T> = forEmitOf();
 
   return iterator;
 };

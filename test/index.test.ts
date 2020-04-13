@@ -3,6 +3,8 @@ import { expect } from "chai";
 import { describe } from "mocha";
 import forEmitOf from "../src";
 import { Readable } from "stream";
+import * as fs from "fs";
+import * as path from "path";
 
 describe("forEmitOf", () => {
   it("should be a function", () => {
@@ -25,18 +27,31 @@ describe("forEmitOf", () => {
   });
 
   it("should throw stream has ended", async () => {
-    const read = Readable.from("test");
-
-    const buffers: any[] = [];
-
-    for await (const buff of read) {
-      buffers.push(buff);
-    }
+    const read = fs.createReadStream(path.join(__dirname, "../package.json"));
 
     try {
+      // @ts-ignore
+      read.readableEnded = true;
+
       forEmitOf(read);
+
+      throw new Error();
     } catch ({ message }) {
       expect(message).to.be.a("string").to.equal("stream has ended");
     }
+  });
+
+  it("should return a iterator and iterate a string", async () => {
+    const read = Readable.from("test");
+
+    const iterator = forEmitOf<string>(read);
+
+    let result = "";
+
+    for await (const chunk of iterator) {
+      result += chunk;
+    }
+
+    expect(result).to.equal("test");
   });
 });
