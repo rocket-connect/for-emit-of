@@ -1,7 +1,8 @@
 # for-emit-of
 > Work in progress 🏗
 
-BADGES
+![Node.js CI](https://github.com/danstarns/for-emit-of/workflows/Node.js%20CI/badge.svg?branch=master&event=push)
+
 
 Turn Node.js Events into Async Iterables.
 
