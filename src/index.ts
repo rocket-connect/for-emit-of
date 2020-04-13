@@ -4,28 +4,56 @@ import * as util from "util";
 
 const sleep = util.promisify(setTimeout);
 
-interface Options {
+interface Defaults {
   event: string;
   error: string;
 }
 
-const defaults: Options = { event: "data", error: "error" };
+const defaults: Defaults = { event: "data", error: "error" };
+
+interface Options {
+  event?: string;
+  error?: string;
+  transform?: (buffer: Buffer) => any;
+}
 
 export default <T>(
-  emitter: EventEmitter | Readable | Writable,
-  options: Options = defaults
-): AsyncIterable<T> => {
+  emitter: (EventEmitter | Readable | Writable) &
+    (
+      | {
+          readableEnded: boolean;
+          writableEnded: boolean;
+        }
+      | {}
+    ),
+  options?: Options & (Defaults | {})
+): AsyncIterable<T> | AsyncIterable<Buffer> | AsyncIterable<any> => {
+  if (!options) {
+    options = defaults;
+  }
+
   options = { ...defaults, ...options };
 
   if (!(emitter instanceof EventEmitter)) {
     throw new Error("emitter must be a instance of EventEmitter");
   }
 
-  if (emitter["readableEnded"] || emitter["writableEnded"]) {
+  if (
+    ("readableEnded" in emitter && Boolean(emitter.readableEnded)) ||
+    ("writableEnded" in emitter && Boolean(emitter.writableEnded))
+  ) {
     throw new Error("stream has ended");
   }
 
-  let buffers: T[] = [];
+  if (options.transform) {
+    const tof = typeof options.transform;
+
+    if (tof !== "function") {
+      throw new Error("transform must be a function");
+    }
+  }
+
+  let buffers: Buffer[] = [];
   let error: Error;
   let active = true;
 
@@ -62,11 +90,13 @@ export default <T>(
         continue;
       }
 
+      if (options.transform) {
+        yield options.transform(result);
+      }
+
       yield result;
     }
   }
 
-  const iterator: AsyncIterable<T> = forEmitOf();
-
-  return iterator;
+  return forEmitOf();
 };
