@@ -8,5 +8,17 @@ module.exports = {
     parserOptions: {
       ecmaVersion: 2018, 
       sourceType: "module" 
+    },
+    rules: {
+      "import/extensions": "off"
+    },
+    settings: {
+      "import/resolver": {
+        node: {
+          extensions: [
+            ".ts"
+          ]
+        }
+      }
     }
 };
