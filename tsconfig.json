@@ -1,11 +1,11 @@
 {
   "compilerOptions": {
-    "target": "EsNext",
+    "target": "ESNext",
     "module": "commonjs",
     "declaration": true,
     "outDir": "./dist",
     "removeComments": true,
-    "strict": true,
+    "strict": false,
     "noImplicitAny": false,
     "forceConsistentCasingInFileNames": true
   }
