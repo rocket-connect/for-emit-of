@@ -108,6 +108,8 @@ describe("forEmitOf", () => {
         // eslint-disable-next-line @typescript-eslint/no-unused-vars
         for await (const chunk of iterator) {
         }
+
+        throw new Error();
       } catch ({ message }) {
         expect(message).to.equal("test");
       }
