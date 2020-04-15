@@ -8,11 +8,11 @@ import * as path from "path";
 import { EventEmitter } from "events";
 
 describe("forEmitOf", () => {
-  it("should be a function", () => {
-    expect(forEmitOf).to.be.a("function");
-  });
-
   describe("validation", () => {
+    it("should be a function", () => {
+      expect(forEmitOf).to.be.a("function");
+    });
+
     it("should throw emitter must be a instance of EventEmitter", () => {
       const str = "i am a string";
 
