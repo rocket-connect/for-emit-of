@@ -41,11 +41,11 @@ function main<T>(emitter: SuperEmitter, options?: Options<T>) {
     }
   }
 
-  let buffers: Buffer[] = [];
+  let events = [];
   let error: Error;
   let active = true;
 
-  emitter.on(options.event, (buff) => buffers.push(buff));
+  emitter.on(options.event, (event) => events.push(event));
 
   emitter.once("error", (err) => {
     error = err;
@@ -58,7 +58,7 @@ function main<T>(emitter: SuperEmitter, options?: Options<T>) {
   });
 
   async function* forEmitOf() {
-    while (buffers.length || active) {
+    while (events.length || active) {
       if (error) {
         throw error;
       }
@@ -69,9 +69,9 @@ function main<T>(emitter: SuperEmitter, options?: Options<T>) {
        */
       await sleep(0);
 
-      const [result, ...rest] = buffers;
+      const [result, ...rest] = events;
 
-      buffers = rest;
+      events = rest;
 
       if (!result) {
         continue;
