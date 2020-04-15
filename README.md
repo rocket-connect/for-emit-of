@@ -1,12 +1,11 @@
 # for-emit-of
-> Work in progress 🏗
-
 ![Node.js CI](https://github.com/danstarns/for-emit-of/workflows/Node.js%20CI/badge.svg?branch=master&event=push)
-
-
+ 
 Turn Node.js Events into Async Iterables.
 
-`$ npm install for-emit-of`
+```
+$ npm install for-emit-of
+```
 
 # Example
 ```javascript
@@ -25,5 +24,29 @@ for await (const event of iterator){
 > Equivalent to 
 
 ```javascript
-Order.on("data", () => {});
+Emitter.on("data", () => {});
+```
+
+# Transform
+```javascript
+import forEmitOf from 'for-emit-of';
+import { Emitter } from '..';
+
+const iterator = forEmitOf(Emitter, {
+    transform: async (event) => { // async aware
+        return JSON.stringify(event);
+    }
+});
+
+for await (const event of iterator){
+    // Stringy
+}
+```
+
+> Equivalent to 
+
+```javascript
+Emitter.on("data", (event) => {
+    const stringy = JSON.stringify(event);
+});
 ```
