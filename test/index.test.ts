@@ -5,6 +5,7 @@ import forEmitOf from "../src";
 import { Readable } from "stream";
 import * as fs from "fs";
 import * as path from "path";
+import { EventEmitter } from "events";
 
 describe("forEmitOf", () => {
   it("should be a function", () => {
@@ -93,6 +94,22 @@ describe("forEmitOf", () => {
           .to.equal("for-emit-of");
 
         break;
+      }
+    });
+
+    it("should catch and throw the error in a async context", async () => {
+      const emitter = new EventEmitter();
+
+      const iterator = forEmitOf(emitter);
+
+      try {
+        emitter.emit("error", { message: "test" });
+
+        // eslint-disable-next-line @typescript-eslint/no-unused-vars
+        for await (const chunk of iterator) {
+        }
+      } catch ({ message }) {
+        expect(message).to.equal("test");
       }
     });
   });
