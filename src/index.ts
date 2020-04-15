@@ -69,19 +69,17 @@ function main<T>(emitter: SuperEmitter, options?: Options<T>) {
        */
       await sleep(0);
 
-      const [result, ...rest] = events;
+      const [event, ...rest] = events;
 
       events = rest;
 
-      if (!result) {
-        continue;
-      }
+      let result = event;
 
       if (options.transform) {
-        yield options.transform(result);
-      } else {
-        yield result;
+        result = await options.transform(event);
       }
+
+      yield result;
     }
   }
 
