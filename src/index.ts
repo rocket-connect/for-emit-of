@@ -4,30 +4,23 @@ import * as util from "util";
 
 const sleep = util.promisify(setTimeout);
 
-interface Defaults {
-  event: string;
-  error: string;
-}
+const defaults = { event: "data", error: "error" };
 
-const defaults: Defaults = { event: "data", error: "error" };
-
-interface Options {
+interface Options<T = any> {
   event?: string;
-  error?: string;
-  transform?: (buffer: Buffer) => any;
+  transform?: (buffer: Buffer) => T;
 }
 
-export default <T>(
-  emitter: (EventEmitter | Readable | Writable) &
-    (
-      | {
-          readableEnded: boolean;
-          writableEnded: boolean;
-        }
-      | {}
-    ),
-  options?: Options & (Defaults | {})
-): AsyncIterable<T> | AsyncIterable<Buffer> | AsyncIterable<any> => {
+type SuperEmitter = (EventEmitter | Readable | Writable) & {
+  readableEnded?: boolean;
+  writableEnded?: boolean;
+};
+
+function main(emitter: SuperEmitter): AsyncIterable<any>;
+function main(emitter: SuperEmitter, options: Options): AsyncIterable<any>;
+function main<T>(emitter: SuperEmitter): AsyncIterable<T>;
+function main<T>(emitter: SuperEmitter, options: Options<T>): AsyncIterable<T>;
+function main<T>(emitter: SuperEmitter, options?: Options<T>) {
   if (!options) {
     options = defaults;
   }
@@ -38,17 +31,12 @@ export default <T>(
     throw new Error("emitter must be a instance of EventEmitter");
   }
 
-  if (
-    ("readableEnded" in emitter && Boolean(emitter.readableEnded)) ||
-    ("writableEnded" in emitter && Boolean(emitter.writableEnded))
-  ) {
+  if (emitter.readableEnded || emitter.writableEnded) {
     throw new Error("stream has ended");
   }
 
   if (options.transform) {
-    const tof = typeof options.transform;
-
-    if (tof !== "function") {
+    if (typeof options.transform !== "function") {
       throw new Error("transform must be a function");
     }
   }
@@ -59,7 +47,7 @@ export default <T>(
 
   emitter.on(options.event, (buff) => buffers.push(buff));
 
-  emitter.once(options.error, (err) => {
+  emitter.once("error", (err) => {
     error = err;
   });
 
@@ -69,7 +57,6 @@ export default <T>(
     });
   });
 
-  // eslint-disable-next-line @typescript-eslint/explicit-function-return-type
   async function* forEmitOf() {
     while (buffers.length || active) {
       if (error) {
@@ -92,11 +79,13 @@ export default <T>(
 
       if (options.transform) {
         yield options.transform(result);
+      } else {
+        yield result;
       }
-
-      yield result;
     }
   }
 
   return forEmitOf();
-};
+}
+
+export default main;
