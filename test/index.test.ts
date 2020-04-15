@@ -77,7 +77,7 @@ describe("forEmitOf", () => {
     });
 
     it("should return a iterator and use a transform to JSON", async () => {
-      const read = fs.createReadStream(path.join(__dirname, "../package.json"));
+      const read = fs.createReadStream(path.join(__dirname, "./test.json"));
 
       const iterator = forEmitOf<string>(read, {
         transform: (buff) => {
@@ -88,8 +88,8 @@ describe("forEmitOf", () => {
       for await (const chunk of iterator) {
         expect(chunk)
           .to.be.a("object")
-          .to.have.property("name")
-          .to.equal("for-emit-of");
+          .to.have.property("message")
+          .to.equal("test");
 
         break;
       }
@@ -110,6 +110,26 @@ describe("forEmitOf", () => {
         throw new Error();
       } catch ({ message }) {
         expect(message).to.equal("test");
+      }
+    });
+
+    it("should continue if no event is found", async () => {
+      const emitter = new EventEmitter();
+
+      const iterator = forEmitOf(emitter);
+
+      setTimeout(() => {
+        emitter.emit("data", false);
+
+        emitter.emit("data", { message: "test" });
+
+        emitter.emit("close");
+      }, 100);
+
+      emitter.emit("data", { message: "test" });
+
+      // eslint-disable-next-line @typescript-eslint/no-unused-vars
+      for await (const chunk of iterator) {
       }
     });
   });

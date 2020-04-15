@@ -73,13 +73,15 @@ function main<T>(emitter: SuperEmitter, options?: Options<T>) {
 
       events = rest;
 
-      let result = event;
-
-      if (options.transform) {
-        result = await options.transform(event);
+      if (!event) {
+        continue;
       }
 
-      yield result;
+      if (options.transform) {
+        yield options.transform(event);
+      } else {
+        yield event;
+      }
     }
   }
 
