@@ -30,9 +30,7 @@ describe("forEmitOf", () => {
 
     it("should throw stream has ended", async () => {
       try {
-        const read = fs.createReadStream(
-          path.join(__dirname, "../package.json")
-        );
+        const read = new EventEmitter();
 
         // @ts-ignore
         read.readableEnded = true;
