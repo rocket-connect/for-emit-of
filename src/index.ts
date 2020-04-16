@@ -16,11 +16,12 @@ type SuperEmitter = (EventEmitter | Readable | Writable) & {
   writableEnded?: boolean;
 };
 
-function main(emitter: SuperEmitter): AsyncIterable<any>;
-function main(emitter: SuperEmitter, options: Options): AsyncIterable<any>;
-function main<T>(emitter: SuperEmitter): AsyncIterable<T>;
-function main<T>(emitter: SuperEmitter, options: Options<T>): AsyncIterable<T>;
-function main<T>(emitter: SuperEmitter, options?: Options<T>) {
+function main<T = any>(emitter: SuperEmitter): AsyncIterable<T>;
+function main<T = any>(
+  emitter: SuperEmitter,
+  options: Options<T>
+): AsyncIterable<T>;
+function main<T = any>(emitter: SuperEmitter, options?: Options<T>) {
   if (!options) {
     options = defaults;
   }
