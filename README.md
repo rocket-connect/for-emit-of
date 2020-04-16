@@ -1,5 +1,5 @@
 # for-emit-of
-![Node.js CI](https://github.com/danstarns/for-emit-of/workflows/Node.js%20CI/badge.svg?branch=master&event=push)
+![Node.js CI](https://github.com/danstarns/for-emit-of/workflows/Node.js%20CI/badge.svg?branch=master&event=push) [![npm version](https://badge.fury.io/js/for-emit-of.svg)](https://www.npmjs.com/package/for-emit-of)
  
 Turn Node.js Events into Async Iterables.
 
