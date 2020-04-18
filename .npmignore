@@ -1,0 +1,11 @@
+.github/
+.nyc_output/
+.vscode/
+examples/
+node_modules/
+src/
+test/
+.babelrc
+.dockerignore
+.eslintrc
+README.md
