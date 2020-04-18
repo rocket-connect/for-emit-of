@@ -16,12 +16,12 @@ type SuperEmitter = (EventEmitter | Readable | Writable) & {
   writableEnded?: boolean;
 };
 
-function main<T = any>(emitter: SuperEmitter): AsyncIterable<T>;
-function main<T = any>(
+function forEmitOf<T = any>(emitter: SuperEmitter): AsyncIterable<T>;
+function forEmitOf<T = any>(
   emitter: SuperEmitter,
   options: Options<T>
 ): AsyncIterable<T>;
-function main<T = any>(emitter: SuperEmitter, options?: Options<T>) {
+function forEmitOf<T = any>(emitter: SuperEmitter, options?: Options<T>) {
   if (!options) {
     options = defaults;
   }
@@ -58,7 +58,7 @@ function main<T = any>(emitter: SuperEmitter, options?: Options<T>) {
     });
   });
 
-  async function* forEmitOf() {
+  async function* generator() {
     while (events.length || active) {
       if (error) {
         throw error;
@@ -86,7 +86,7 @@ function main<T = any>(emitter: SuperEmitter, options?: Options<T>) {
     }
   }
 
-  return forEmitOf();
+  return generator();
 }
 
-export default main;
+export default forEmitOf;
