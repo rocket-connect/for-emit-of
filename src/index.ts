@@ -21,6 +21,11 @@ function forEmitOf<T = any>(
   emitter: SuperEmitter,
   options: Options<T>
 ): AsyncIterable<T>;
+
+/**
+ * @param {import('events').EventEmitter} emitter
+ * @param {{event: string, transform: () => any}} options
+ */
 function forEmitOf<T = any>(emitter: SuperEmitter, options?: Options<T>) {
   if (!options) {
     options = defaults;

@@ -1,8 +1,9 @@
 {
   "name": "for-emit-of",
-  "version": "1.0.3",
+  "version": "1.0.4",
   "description": "Turn Node.js Events into Async Iterables",
-  "main": "./dist",
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
   "scripts": {
     "test": "cross-env ./node_modules/.bin/nyc ./node_modules/.bin/mocha --recursive --exit --timeout=100000 -r ts-node/register test/**/*.test.ts",
     "build": "mkdir dist && cross-env ./node_modules/.bin/babel --extensions .ts src -d dist",
