@@ -7,6 +7,6 @@ src/
 test/
 .babelrc
 .dockerignore
-.eslint.jsS
+.eslintrc.js
 README.md
 tsconfig.json

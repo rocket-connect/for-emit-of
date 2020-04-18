@@ -1,6 +1,6 @@
 {
   "name": "for-emit-of",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "description": "Turn Node.js Events into Async Iterables",
   "main": "./dist",
   "scripts": {
