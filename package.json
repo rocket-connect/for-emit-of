@@ -15,9 +15,16 @@
     "type": "git",
     "url": "git+https://github.com/danstarns/for-emit-of.git"
   },
-  "keywords": [],
-  "author": "",
-  "license": "ISC",
+  "keywords": [
+    "iterator",
+    "async",
+    "generator",
+    "events",
+    "emitter",
+    "streams"
+  ],
+  "author": "Daniel Starns - danielstarns@hotmail.com",
+  "license": "MIT",
   "bugs": {
     "url": "https://github.com/danstarns/for-emit-of/issues"
   },
