@@ -133,7 +133,7 @@ describe("forEmitOf", () => {
       }
     });
 
-    it("should throws an error when timeout is reached", async () => {
+    it("should throw an error when timeout is reached", async () => {
       const emitter = new EventEmitter();
 
       const iterator = forEmitOf<{ message: string }>(emitter, {
