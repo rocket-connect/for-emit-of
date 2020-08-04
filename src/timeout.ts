@@ -22,7 +22,7 @@ export interface TimeoutWrapper {
 export function timeout(value: number): TimeoutWrapper {
   let deadline = getDeadline(value);
   function getAwaiter(): Promise<symbol> {
-    return sleep(deadline - instant()).then(() =>
+    return sleep(Math.max(deadline - instant(), 0)).then(() =>
       hadTimedOut(deadline) ? timedOut : getAwaiter()
     );
   }
