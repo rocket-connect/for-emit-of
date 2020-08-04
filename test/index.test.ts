@@ -221,7 +221,7 @@ describe("forEmitOf", () => {
 
       try {
         for await (const chunk of iterator) {
-          sleep(10);
+          await sleep(10);
           result += chunk.message;
         }
       } catch (error) {
@@ -255,7 +255,7 @@ describe("forEmitOf", () => {
 
       try {
         for await (const chunk of iterator) {
-          sleep(10);
+          await sleep(10);
           result += chunk.message;
         }
       } catch (error) {
