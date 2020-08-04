@@ -145,7 +145,7 @@ function forEmitOf<T = any>(emitter: SuperEmitter, options?: Options<T>) {
 
         yield options.transform ? options.transform(event) : event;
       }
-      if (active) {
+      if (active && !error) {
         if (await Promise.race(getRaceItems())) {
           emitter.removeListener(options.event, eventListener);
           emitter.removeListener(options.error, errorListener);
