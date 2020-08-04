@@ -234,6 +234,40 @@ describe("forEmitOf", () => {
       expect(errorCaught.message).to.be.eq("Event timed out");
     });
 
+    it("should throw an error when first event timeout is reached before the first emitted event when firstEventTimeout is informed and inBetweenTimeout is not", async () => {
+      const emitter = new EventEmitter();
+
+      const iterator = forEmitOf<{ message: string }>(emitter, {
+        firstEventTimeout: 50,
+      });
+
+      setTimeout(async () => {
+        await sleep(60);
+        emitter.emit("data", { message: "test1" });
+        await sleep(0);
+        emitter.emit("data", { message: "test2" });
+        await sleep(120);
+        emitter.emit("data", { message: "test5" });
+        emitter.emit("end");
+      }, 10);
+
+      let result = "";
+      let errorCaught!: Error;
+
+      try {
+        for await (const chunk of iterator) {
+          await sleep(10);
+          result += chunk.message;
+        }
+      } catch (error) {
+        errorCaught = error;
+      }
+
+      expect(result).to.equal("");
+      expect(errorCaught).to.exist;
+      expect(errorCaught.message).to.be.eq("Event timed out");
+    });
+
     it("should throw an error when timeout is reached, but all health events must be processed even if it's emitted faster than it can be processed", async () => {
       const emitter = new EventEmitter();
 
