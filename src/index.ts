@@ -1,6 +1,6 @@
 import { EventEmitter } from "events";
 import { Readable, Writable } from "stream";
-import { timeout, TimeoutWrapper } from "./timeout";
+import { timeout, TimeoutWrapper, timedOut } from "./timeout";
 import { sleep } from "./sleep";
 
 const defaults = {
@@ -146,7 +146,8 @@ function forEmitOf<T = any>(emitter: SuperEmitter, options?: Options<T>) {
         yield options.transform ? options.transform(event) : event;
       }
       if (active && !error) {
-        if (await Promise.race(getRaceItems())) {
+        const winner = await Promise.race(getRaceItems());
+        if (winner === timedOut) {
           emitter.removeListener(options.event, eventListener);
           emitter.removeListener(options.error, errorListener);
           options.end.forEach((event) =>
