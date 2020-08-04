@@ -233,7 +233,7 @@ describe("forEmitOf", () => {
       expect(errorCaught.message).to.be.eq("Event timed out");
     });
 
-    it("should throw an error when timeout is reached, but all health events must be processed even if its emitted faster than it can be processed", async () => {
+    it("should throw an error when timeout is reached, but all health events must be processed even if it's emitted faster than it can be processed", async () => {
       const emitter = new EventEmitter();
 
       const iterator = forEmitOf<{ message: string }>(emitter, {
@@ -265,6 +265,34 @@ describe("forEmitOf", () => {
       expect(result).to.equal("test1test2test3test4");
       expect(errorCaught).to.exist;
       expect(errorCaught.message).to.be.eq("Event timed out");
+    });
+
+    it("event processing must be interoperable", async () => {
+      const emitter = new EventEmitter();
+
+      const iterator = forEmitOf<{ message: string }>(emitter);
+
+      let result = "";
+      setTimeout(async () => {
+        emitter.emit("data", { message: "test1" });
+        emitter.emit("data", { message: "test2" });
+        emitter.emit("data", { message: "test3" });
+        emitter.emit("data", { message: "test4" });
+        emitter.emit("end");
+      }, 10);
+
+      await sleep(10);
+      for await (const chunk of iterator) {
+        setImmediate(async () => {
+          result += ` ${chunk.message}a `;
+        });
+        result += chunk.message;
+      }
+      await sleep(0);
+
+      expect(result).to.equal(
+        "test1 test1a test2 test2a test3 test3a test4 test4a "
+      );
     });
   });
 });

@@ -1,6 +1,7 @@
 import { EventEmitter } from "events";
 import { Readable, Writable } from "stream";
 import { timeout, TimeoutWrapper } from "./timeout";
+import { sleep } from "./sleep";
 
 const defaults = {
   event: "data",
@@ -127,14 +128,21 @@ function forEmitOf<T = any>(emitter: SuperEmitter, options?: Options<T>) {
       if (error) {
         throw error;
       }
-      if (await Promise.race(getRaceItems())) {
-        throw Error("Event timed out");
-      }
       while (events.length > 0) {
+        /* We do not want to block the process!
+            This call allows other processes
+            a chance to execute.
+        */
+        await sleep(0);
         const [event, ...rest] = events;
         events = rest;
 
         yield options.transform ? options.transform(event) : event;
+      }
+      if (active) {
+        if (await Promise.race(getRaceItems())) {
+          throw Error("Event timed out");
+        }
       }
     }
   }
