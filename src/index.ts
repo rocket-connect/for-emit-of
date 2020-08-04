@@ -108,7 +108,7 @@ function raceFactory<T>(options: Options<T>, emitter: SuperEmitter) {
     return getTimeoutRace(options, emitter);
   }
 
-  return () => [waitResponse<T>(emitter, options)];
+  return () => [getFirstAwaiter<T>(options, emitter)];
 }
 
 function forEmitOf<T = any>(emitter: SuperEmitter): AsyncIterable<T>;
