@@ -187,7 +187,7 @@ describe("forEmitOf", () => {
 
       try {
         for await (const chunk of iterator) {
-          sleep(10);
+          await sleep(10);
           result += chunk.message;
         }
       } catch (error) {
@@ -210,6 +210,7 @@ describe("forEmitOf", () => {
       setTimeout(async () => {
         await sleep(120);
         emitter.emit("data", { message: "test1" });
+        await sleep(0);
         emitter.emit("data", { message: "test2" });
         await sleep(120);
         emitter.emit("data", { message: "test5" });

@@ -58,8 +58,12 @@ function getInBetweenTimeout<T>(options: Options<T>, emitter: SuperEmitter) {
   let timeoutRace: () => Array<Promise<symbol>>;
   return () => {
     if (!timeoutRace) {
-      timeoutRace = getTimeoutRace(options, emitter);
-      return [waitResponse(emitter, options)];
+      return [
+        waitResponse(emitter, options).then((result) => {
+          timeoutRace = getTimeoutRace(options, emitter);
+          return result;
+        }),
+      ];
     }
     return timeoutRace();
   };
