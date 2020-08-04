@@ -114,15 +114,15 @@ function forEmitOf<T = any>(emitter: SuperEmitter, options?: Options<T>) {
   let events = [];
   let error: Error;
   let active = true;
-  const eventListener: (...args: any[]) => void = (event) => events.push(event);
+  const eventListener = <T>(event: T) => events.push(event);
   emitter.on(options.event, eventListener);
-  const errorListener: (...args: any[]) => void = (err) => {
-    error = err;
-  };
-  emitter.once(options.error, errorListener);
   const endListener = () => {
     active = false;
   };
+  const errorListener = (err: Error) => {
+    error = err;
+  };
+  emitter.once(options.error, errorListener);
   options.end.forEach((event) => {
     emitter.once(event, endListener);
   });
