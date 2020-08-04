@@ -267,7 +267,7 @@ describe("forEmitOf", () => {
       expect(errorCaught.message).to.be.eq("Event timed out");
     });
 
-    it("event processing must be interoperable", async () => {
+    it("event processing must be non blocking", async () => {
       const emitter = new EventEmitter();
 
       const iterator = forEmitOf<{ message: string }>(emitter);
