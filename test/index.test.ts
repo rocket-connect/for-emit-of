@@ -132,5 +132,39 @@ describe("forEmitOf", () => {
       for await (const chunk of iterator) {
       }
     });
+
+    it("should throws an error when timeout is reached", async () => {
+      const emitter = new EventEmitter();
+
+      const iterator = forEmitOf<{ message: string }>(emitter, {
+        timeout: 100,
+      });
+
+      setTimeout(() => {
+        emitter.emit("data", { message: "test1" });
+        setTimeout(() => {
+          emitter.emit("data", { message: "test2" });
+          setTimeout(() => {
+            emitter.emit("data", { message: "test3" });
+            emitter.emit("close");
+          }, 120);
+        }, 20);
+      }, 10);
+
+      let result = "";
+      let errorCaught!: Error;
+
+      try {
+        for await (const chunk of iterator) {
+          result += chunk.message;
+        }
+      } catch (error) {
+        errorCaught = error;
+      }
+
+      expect(result).to.equal("test1test2");
+      expect(errorCaught).to.exist;
+      expect(errorCaught.message).to.be.eq("Event timed out");
+    });
   });
 });
