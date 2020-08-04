@@ -1,8 +1,8 @@
 import { sleep } from "./sleep";
 
 function instant() {
-  const [s, ms] = process.hrtime();
-  return s * 1e3 + ms / 1e6;
+  const [s, ns] = process.hrtime();
+  return s * 1e3 + ns / 1e6;
 }
 
 function hadTimedOut(deadline: number) {
