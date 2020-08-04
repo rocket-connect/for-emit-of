@@ -138,7 +138,7 @@ describe("forEmitOf", () => {
       const emitter = new EventEmitter();
 
       const iterator = forEmitOf<{ message: string }>(emitter, {
-        timeout: 100,
+        inBetweenTimeout: 100,
       });
 
       setTimeout(async () => {
@@ -170,7 +170,7 @@ describe("forEmitOf", () => {
       const emitter = new EventEmitter();
 
       const iterator = forEmitOf<{ message: string }>(emitter, {
-        timeout: 100,
+        inBetweenTimeout: 100,
       });
 
       setTimeout(async () => {
@@ -199,16 +199,16 @@ describe("forEmitOf", () => {
       expect(errorCaught.message).to.be.eq("Event timed out");
     });
 
-    it("should throw an error when timeout is reached before the first emitted event if inBetweenTimeout are false", async () => {
+    it("should throw an error when first event timeout is reached before the first emitted event when firstEventTimeout is informed", async () => {
       const emitter = new EventEmitter();
 
       const iterator = forEmitOf<{ message: string }>(emitter, {
-        timeout: 100,
-        inBetweenTimeout: false,
+        inBetweenTimeout: 100,
+        firstEventTimeout: 50,
       });
 
       setTimeout(async () => {
-        await sleep(120);
+        await sleep(60);
         emitter.emit("data", { message: "test1" });
         await sleep(0);
         emitter.emit("data", { message: "test2" });
@@ -238,7 +238,7 @@ describe("forEmitOf", () => {
       const emitter = new EventEmitter();
 
       const iterator = forEmitOf<{ message: string }>(emitter, {
-        timeout: 100,
+        inBetweenTimeout: 100,
       });
 
       setTimeout(async () => {
