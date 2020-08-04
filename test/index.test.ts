@@ -296,4 +296,27 @@ describe("forEmitOf", () => {
       );
     });
   });
+
+  it("event processing must emit even falsy values", async () => {
+    const emitter = new EventEmitter();
+
+    const iterator = forEmitOf<{ message: string }>(emitter);
+
+    let result = "";
+    setTimeout(async () => {
+      emitter.emit("data", false);
+      emitter.emit("data", 0);
+      emitter.emit("data", "");
+      emitter.emit("data", "not empty");
+      emitter.emit("end");
+    }, 10);
+
+    await sleep(10);
+    for await (const chunk of iterator) {
+      result += `[${chunk}] `;
+    }
+    await sleep(0);
+
+    expect(result).to.equal("[false] [0] [] [not empty] ");
+  });
 });
