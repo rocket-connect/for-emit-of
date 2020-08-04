@@ -6,6 +6,7 @@ import { Readable } from "stream";
 import * as fs from "fs";
 import * as path from "path";
 import { EventEmitter } from "events";
+import { sleep } from "../src/sleep";
 
 describe("forEmitOf", () => {
   describe("validation", () => {
@@ -140,15 +141,13 @@ describe("forEmitOf", () => {
         timeout: 100,
       });
 
-      setTimeout(() => {
+      setTimeout(async () => {
         emitter.emit("data", { message: "test1" });
-        setTimeout(() => {
-          emitter.emit("data", { message: "test2" });
-          setTimeout(() => {
-            emitter.emit("data", { message: "test3" });
-            emitter.emit("close");
-          }, 120);
-        }, 20);
+        await sleep(20);
+        emitter.emit("data", { message: "test2" });
+        await sleep(120);
+        emitter.emit("data", { message: "test3" });
+        emitter.emit("end");
       }, 10);
 
       let result = "";
@@ -163,6 +162,40 @@ describe("forEmitOf", () => {
       }
 
       expect(result).to.equal("test1test2");
+      expect(errorCaught).to.exist;
+      expect(errorCaught.message).to.be.eq("Event timed out");
+    });
+
+    it("should throw an error when timeout is reached, but all health events must be processed even if its emitted faster than it can be processed", async () => {
+      const emitter = new EventEmitter();
+
+      const iterator = forEmitOf<{ message: string }>(emitter, {
+        timeout: 100,
+      });
+
+      setTimeout(async () => {
+        emitter.emit("data", { message: "test1" });
+        emitter.emit("data", { message: "test2" });
+        emitter.emit("data", { message: "test3" });
+        emitter.emit("data", { message: "test4" });
+        await sleep(120);
+        emitter.emit("data", { message: "test5" });
+        emitter.emit("end");
+      }, 10);
+
+      let result = "";
+      let errorCaught!: Error;
+
+      try {
+        for await (const chunk of iterator) {
+          sleep(10);
+          result += chunk.message;
+        }
+      } catch (error) {
+        errorCaught = error;
+      }
+
+      expect(result).to.equal("test1test2test3test4");
       expect(errorCaught).to.exist;
       expect(errorCaught.message).to.be.eq("Event timed out");
     });
