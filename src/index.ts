@@ -47,6 +47,8 @@ type SuperEmitter = (EventEmitter | Readable | Writable) & {
   writableEnded?: boolean;
 };
 
+type TimeoutRaceFactory = () => Array<Promise<void | symbol>>;
+
 function waitResponse<T = any>(emitter: SuperEmitter, options: Options<T>) {
   return new Promise<void>((resolve, reject) => {
     emitter.once(options.event, () => {
@@ -88,19 +90,29 @@ function getFirstAwaiter<T>(options: Options<T>, emitter: SuperEmitter) {
   return waitResponse(emitter, options);
 }
 
-function getTimeoutRace<T>(options: Options<T>, emitter: SuperEmitter) {
-  let timeoutRace: () => Array<Promise<void | symbol>>;
+function switchRace<T>(
+  options: Options<T>,
+  emitter: SuperEmitter,
+  getNextRace: () => TimeoutRaceFactory
+) {
+  let timeoutRace: TimeoutRaceFactory;
   return () =>
     timeoutRace
       ? timeoutRace()
       : [
           getFirstAwaiter<T>(options, emitter).then((result) => {
             if (result !== timedOut) {
-              timeoutRace = getInBetweenTimeoutRace(options, emitter);
+              timeoutRace = getNextRace();
             }
             return result;
           }),
         ];
+}
+
+function getTimeoutRace<T>(options: Options<T>, emitter: SuperEmitter) {
+  return switchRace<T>(options, emitter, () =>
+    getInBetweenTimeoutRace(options, emitter)
+  );
 }
 
 function raceFactory<T>(options: Options<T>, emitter: SuperEmitter) {
@@ -108,7 +120,10 @@ function raceFactory<T>(options: Options<T>, emitter: SuperEmitter) {
     return getTimeoutRace(options, emitter);
   }
 
-  return () => [getFirstAwaiter<T>(options, emitter)];
+  const getWaitResponse = () => [waitResponse<T>(emitter, options)];
+  return options.firstEventTimeout
+    ? switchRace(options, emitter, () => getWaitResponse)
+    : getWaitResponse;
 }
 
 function forEmitOf<T = any>(emitter: SuperEmitter): AsyncIterable<T>;

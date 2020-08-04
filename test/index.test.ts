@@ -268,6 +268,33 @@ describe("forEmitOf", () => {
       expect(errorCaught.message).to.be.eq("Event timed out");
     });
 
+    it("should iterate without timeout when first event timeout is not reached before the first emitted event when firstEventTimeout is informed and inBetweenTimeout is not", async () => {
+      const emitter = new EventEmitter();
+
+      const iterator = forEmitOf<{ message: string }>(emitter, {
+        firstEventTimeout: 100,
+      });
+
+      setTimeout(async () => {
+        await sleep(60);
+        emitter.emit("data", { message: "test1" });
+        await sleep(0);
+        emitter.emit("data", { message: "test2" });
+        await sleep(120);
+        emitter.emit("data", { message: "test3" });
+        emitter.emit("end");
+      }, 10);
+
+      let result = "";
+
+      for await (const chunk of iterator) {
+        await sleep(10);
+        result += chunk.message;
+      }
+
+      expect(result).to.equal("test1test2test3");
+    });
+
     it("should throw an error when timeout is reached, but all health events must be processed even if it's emitted faster than it can be processed", async () => {
       const emitter = new EventEmitter();
 
@@ -329,28 +356,28 @@ describe("forEmitOf", () => {
         "test1 test1a test2 test2a test3 test3a test4 test4a "
       );
     });
-  });
 
-  it("event processing must emit even falsy values", async () => {
-    const emitter = new EventEmitter();
+    it("event processing must emit even falsy values", async () => {
+      const emitter = new EventEmitter();
 
-    const iterator = forEmitOf<{ message: string }>(emitter);
+      const iterator = forEmitOf<{ message: string }>(emitter);
 
-    let result = "";
-    setTimeout(async () => {
-      emitter.emit("data", false);
-      emitter.emit("data", 0);
-      emitter.emit("data", "");
-      emitter.emit("data", "not empty");
-      emitter.emit("end");
-    }, 10);
+      let result = "";
+      setTimeout(async () => {
+        emitter.emit("data", false);
+        emitter.emit("data", 0);
+        emitter.emit("data", "");
+        emitter.emit("data", "not empty");
+        emitter.emit("end");
+      }, 10);
 
-    await sleep(10);
-    for await (const chunk of iterator) {
-      result += `[${chunk}] `;
-    }
-    await sleep(0);
+      await sleep(10);
+      for await (const chunk of iterator) {
+        result += `[${chunk}] `;
+      }
+      await sleep(0);
 
-    expect(result).to.equal("[false] [0] [] [not empty] ");
+      expect(result).to.equal("[false] [0] [] [not empty] ");
+    });
   });
 });
