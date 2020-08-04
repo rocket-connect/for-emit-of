@@ -110,10 +110,12 @@ function forEmitOf<T = any>(emitter: SuperEmitter, options?: Options<T>) {
   let events = [];
   let error: Error;
   let active = true;
-  emitter.on(options.event, (event) => events.push(event));
-  emitter.once(options.error, (err) => {
+  const eventListener: (...args: any[]) => void = (event) => events.push(event);
+  emitter.on(options.event, eventListener);
+  const errorListener: (...args: any[]) => void = (err) => {
     error = err;
-  });
+  };
+  emitter.once(options.error, errorListener);
   const endListener = () => {
     active = false;
   };
@@ -141,6 +143,11 @@ function forEmitOf<T = any>(emitter: SuperEmitter, options?: Options<T>) {
       }
       if (active) {
         if (await Promise.race(getRaceItems())) {
+          emitter.removeListener(options.event, eventListener);
+          emitter.removeListener(options.error, errorListener);
+          options.end.forEach((event) =>
+            emitter.removeListener(event, endListener)
+          );
           throw Error("Event timed out");
         }
       }
