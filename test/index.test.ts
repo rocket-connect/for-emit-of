@@ -166,6 +166,73 @@ describe("forEmitOf", () => {
       expect(errorCaught.message).to.be.eq("Event timed out");
     });
 
+    it("should throw an error when timeout is reached only after the first emitted event", async () => {
+      const emitter = new EventEmitter();
+
+      const iterator = forEmitOf<{ message: string }>(emitter, {
+        timeout: 100,
+      });
+
+      setTimeout(async () => {
+        await sleep(120);
+        emitter.emit("data", { message: "test1" });
+        emitter.emit("data", { message: "test2" });
+        await sleep(120);
+        emitter.emit("data", { message: "test5" });
+        emitter.emit("end");
+      }, 10);
+
+      let result = "";
+      let errorCaught!: Error;
+
+      try {
+        for await (const chunk of iterator) {
+          sleep(10);
+          result += chunk.message;
+        }
+      } catch (error) {
+        errorCaught = error;
+      }
+
+      expect(result).to.equal("test1test2");
+      expect(errorCaught).to.exist;
+      expect(errorCaught.message).to.be.eq("Event timed out");
+    });
+
+    it("should throw an error when timeout is reached before the first emitted event if inBetweenTimeout are false", async () => {
+      const emitter = new EventEmitter();
+
+      const iterator = forEmitOf<{ message: string }>(emitter, {
+        timeout: 100,
+        inBetweenTimeout: false,
+      });
+
+      setTimeout(async () => {
+        await sleep(120);
+        emitter.emit("data", { message: "test1" });
+        emitter.emit("data", { message: "test2" });
+        await sleep(120);
+        emitter.emit("data", { message: "test5" });
+        emitter.emit("end");
+      }, 10);
+
+      let result = "";
+      let errorCaught!: Error;
+
+      try {
+        for await (const chunk of iterator) {
+          sleep(10);
+          result += chunk.message;
+        }
+      } catch (error) {
+        errorCaught = error;
+      }
+
+      expect(result).to.equal("");
+      expect(errorCaught).to.exist;
+      expect(errorCaught.message).to.be.eq("Event timed out");
+    });
+
     it("should throw an error when timeout is reached, but all health events must be processed even if its emitted faster than it can be processed", async () => {
       const emitter = new EventEmitter();
 

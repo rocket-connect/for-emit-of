@@ -2,13 +2,19 @@ import { EventEmitter } from "events";
 import { Readable, Writable } from "stream";
 import { timeout, TimeoutWrapper } from "./timeout";
 
-const defaults = { event: "data", error: "error", end: ["close", "end"] };
+const defaults = {
+  event: "data",
+  error: "error",
+  end: ["close", "end"],
+  inBetweenTimeout: true,
+};
 
 interface Options<T = any> {
   event?: string;
   error?: string;
   end?: string[];
   timeout?: number;
+  inBetweenTimeout?: boolean;
   transform?: (buffer: Buffer) => T;
 }
 
@@ -29,33 +35,44 @@ function waitResponse<T = any>(emitter: SuperEmitter, options: Options<T>) {
   });
 }
 
-function awaitFactory<T>(emitter: SuperEmitter, options: Options<T>) {
-  return () => waitResponse<T>(emitter, options);
-}
-
-function awaitAndResetTimeoutFactory<T>(
+async function awaitAndResetTimeout<T>(
   emitter: SuperEmitter,
   options: Options<T>,
   timeoutWrapper: TimeoutWrapper
 ) {
-  const awaiter = awaitFactory(emitter, options);
+  const result = await waitResponse(emitter, options);
+  timeoutWrapper.updateDeadline();
+  return result;
+}
 
-  return async () => {
-    const result = await awaiter();
-    timeoutWrapper.updateDeadline();
-    return result;
+function getTimeoutRace<T>(options: Options<T>, emitter: SuperEmitter) {
+  const timeoutWrapper = timeout(options.timeout);
+  return () => [
+    awaitAndResetTimeout<T>(emitter, options, timeoutWrapper),
+    timeoutWrapper.awaiter,
+  ];
+}
+
+function getInBetweenTimeout<T>(options: Options<T>, emitter: SuperEmitter) {
+  let timeoutRace: () => Array<Promise<symbol>>;
+  return () => {
+    if (!timeoutRace) {
+      timeoutRace = getTimeoutRace(options, emitter);
+      return [waitResponse(emitter, options)];
+    }
+    return timeoutRace();
   };
 }
 
 function raceFactory<T>(options: Options<T>, emitter: SuperEmitter) {
   if (options.timeout) {
-    const timeoutWrapper = timeout(options.timeout);
-    return [
-      awaitAndResetTimeoutFactory<T>(emitter, options, timeoutWrapper),
-      timeoutWrapper.awaiter,
-    ];
+    if (options.inBetweenTimeout) {
+      return getInBetweenTimeout(options, emitter);
+    }
+    return getTimeoutRace<T>(options, emitter);
   }
-  return [awaitFactory<T>(emitter, options)];
+
+  return () => [waitResponse<T>(emitter, options)];
 }
 
 function forEmitOf<T = any>(emitter: SuperEmitter): AsyncIterable<T>;
@@ -103,14 +120,14 @@ function forEmitOf<T = any>(emitter: SuperEmitter, options?: Options<T>) {
     emitter.once(event, endListener);
   });
 
-  const race = raceFactory<T>(options, emitter);
+  const getRaceItems = raceFactory<T>(options, emitter);
 
   async function* generator() {
     while (events.length || active) {
       if (error) {
         throw error;
       }
-      if (await Promise.race(race.map((x) => x()))) {
+      if (await Promise.race(getRaceItems())) {
         throw Error("Event timed out");
       }
       while (events.length > 0) {

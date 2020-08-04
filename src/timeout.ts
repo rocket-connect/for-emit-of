@@ -15,7 +15,7 @@ function getDeadline(value: number) {
 
 const timedOut = Symbol("TimedOutSymbol");
 export interface TimeoutWrapper {
-  awaiter(): Promise<symbol>;
+  awaiter: Promise<symbol>;
   updateDeadline(): void;
 }
 
@@ -29,7 +29,7 @@ export function timeout(value: number): TimeoutWrapper {
   const awaiter = getAwaiter();
 
   return {
-    awaiter: () => awaiter,
+    awaiter,
     updateDeadline() {
       deadline = getDeadline(value);
     },
