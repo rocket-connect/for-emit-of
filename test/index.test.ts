@@ -412,7 +412,7 @@ describe("forEmitOf", () => {
       expect(result).to.be.eqls("[false] [0] [] [not empty] [not empty 2] [not empty 2] [not empty 3] [not empty 4] [not empty 5] [not empty 6] ")
     });
 
-    it.only("should make all interactions if the value of limit is 0 ", async () => {
+    it("should make all interactions if the value of limit is 0 ", async () => {
       const emitter = new EventEmitter();
 
       const iterator = forEmitOf<{ message: string }>(emitter, { limit: 0 });
