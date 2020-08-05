@@ -153,6 +153,10 @@ function forEmitOf<T = any>(emitter: SuperEmitter, options?: Options<T>) {
     }
   }
 
+  if (!Array.isArray(options.end)) {
+    throw new Error("end must be an array");
+  }
+
   let events = [];
   let error: Error;
   let active = true;
