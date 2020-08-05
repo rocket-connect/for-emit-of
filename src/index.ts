@@ -206,7 +206,7 @@ function forEmitOf<T = any>(emitter: SuperEmitter, options?: Options<T>) {
         
         yield options.transform ? options.transform(event) : event;
         countEvents++
-        if(countEvents === options.limit) {
+        if(options.limit && countEvents >= options.limit) {
           shouldYield = false;
         }
       }

@@ -1,11 +1,11 @@
 /* eslint-disable @typescript-eslint/ban-ts-ignore */
 import { expect } from "chai";
-import { describe } from "mocha";
-import forEmitOf from "../src";
-import { Readable } from "stream";
-import * as fs from "fs";
-import * as path from "path";
 import { EventEmitter } from "events";
+import * as fs from "fs";
+import { describe } from "mocha";
+import * as path from "path";
+import { Readable } from "stream";
+import forEmitOf from "../src";
 import { sleep } from "../src/sleep";
 
 describe("forEmitOf", () => {
@@ -378,6 +378,38 @@ describe("forEmitOf", () => {
       await sleep(0);
 
       expect(result).to.equal("[false] [0] [] [not empty] ");
+    });
+
+    it("should the number of interactions respect the limit", async () => {
+      const emitter = new EventEmitter();
+
+      const iterator = forEmitOf<{ message: string }>(emitter, { limit: 10 });
+      let count = 0;
+      let result = "";
+      setTimeout(async () => {
+        emitter.emit("data", false);
+        emitter.emit("data", 0);
+        emitter.emit("data", "");
+        emitter.emit("data", "not empty");
+        emitter.emit("data", "not empty 2");
+        emitter.emit("data", "not empty 2");
+        emitter.emit("data", "not empty 3");
+        emitter.emit("data", "not empty 4");
+        emitter.emit("data", "not empty 5");
+        emitter.emit("data", "not empty 6");
+        emitter.emit("data", "not empty 7");
+        emitter.emit("end");
+      }, 10);
+
+
+      await sleep(10);
+      for await (const chunk of iterator) {
+        count++;
+        result += `[${chunk}] `;
+      }
+      await sleep(0);
+      expect(count).to.equal(10);
+      expect(result).to.be.eqls("[false] [0] [] [not empty] [not empty 2] [not empty 2] [not empty 3] [not empty 4] [not empty 5] [not empty 6] ")
     });
   });
 });
