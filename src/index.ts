@@ -188,8 +188,8 @@ function forEmitOf<T = any>(emitter: SuperEmitter, options?: Options<T>) {
       );
     };
 
-    let limit  = options.limit ? options.limit : true;
-    let countEvents = 0
+    let limit = options.limit ? !!options.limit : true;
+    let countEvents = 0;
 
     while ((events.length || active) && limit) {
       if (error) {
@@ -206,7 +206,7 @@ function forEmitOf<T = any>(emitter: SuperEmitter, options?: Options<T>) {
         
         yield options.transform ? options.transform(event) : event;
         countEvents++
-        if(countEvents === limit) {
+        if(countEvents === options.limit) {
           limit = false;
         }
       }
