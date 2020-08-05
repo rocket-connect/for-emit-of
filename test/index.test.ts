@@ -60,6 +60,19 @@ describe("forEmitOf", () => {
           .to.equal("transform must be a function");
       }
     });
+
+    it("should throw end must be an array", () => {
+      try {
+        const read = new EventEmitter();
+
+        // @ts-ignore
+        forEmitOf(read, { end: {} });
+
+        throw new Error();
+      } catch ({ message }) {
+        expect(message).to.be.a("string").to.equal("end must be an array");
+      }
+    });
   });
 
   describe("functionality", () => {
@@ -84,6 +97,7 @@ describe("forEmitOf", () => {
         transform: (buff) => {
           return JSON.parse(buff.toString());
         },
+        end: ["end", "close"],
       });
 
       for await (const chunk of iterator) {
