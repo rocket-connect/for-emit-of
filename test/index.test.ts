@@ -443,5 +443,69 @@ describe("forEmitOf", () => {
       expect(count).to.equal(11);
       expect(result).to.be.eqls("[false] [0] [] [not empty] [not empty 2] [not empty 2] [not empty 3] [not empty 4] [not empty 5] [not empty 6] [not empty 7] ")
     });
+
+    it("should the number of interactions respect the limit even if the number of events is higher", async () => {
+      const emitter = new EventEmitter();
+
+      const iterator = forEmitOf<{ message: string }>(emitter, { limit: 10 });
+      let count = 0;
+      let result = "";
+      setTimeout(async () => {
+        emitter.emit("data", false);
+        emitter.emit("data", 0);
+        emitter.emit("data", "");
+        emitter.emit("data", "not empty");
+        emitter.emit("data", "not empty 2");
+        emitter.emit("data", "not empty 2");
+        emitter.emit("data", "not empty 3");
+        emitter.emit("data", "not empty 4");
+        emitter.emit("data", "not empty 5");
+        emitter.emit("data", "not empty 6");
+        emitter.emit("data", "not empty 7");
+        emitter.emit("end");
+      }, 10);
+
+
+      await sleep(10);
+      for await (const chunk of iterator) {
+        count++;
+        result += `[${chunk}] `;
+      }
+      await sleep(0);
+      expect(count).to.equal(10);
+      expect(result).to.be.eqls("[false] [0] [] [not empty] [not empty 2] [not empty 2] [not empty 3] [not empty 4] [not empty 5] [not empty 6] ")
+    });
+
+    it("should make all interactions if has no limit ", async () => {
+      const emitter = new EventEmitter();
+
+      const iterator = forEmitOf<{ message: string }>(emitter);
+      let count = 0;
+      let result = "";
+      setTimeout(async () => {
+        emitter.emit("data", false);
+        emitter.emit("data", 0);
+        emitter.emit("data", "");
+        emitter.emit("data", "not empty");
+        emitter.emit("data", "not empty 2");
+        emitter.emit("data", "not empty 2");
+        emitter.emit("data", "not empty 3");
+        emitter.emit("data", "not empty 4");
+        emitter.emit("data", "not empty 5");
+        emitter.emit("data", "not empty 6");
+        emitter.emit("data", "not empty 7");
+        emitter.emit("end");
+      }, 10);
+
+
+      await sleep(10);
+      for await (const chunk of iterator) {
+        count++;
+        result += `[${chunk}] `;
+      }
+      await sleep(0);
+      expect(count).to.equal(11);
+      expect(result).to.be.eqls("[false] [0] [] [not empty] [not empty 2] [not empty 2] [not empty 3] [not empty 4] [not empty 5] [not empty 6] [not empty 7] ")
+    });
   });
 });
