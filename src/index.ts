@@ -132,10 +132,6 @@ function forEmitOf<T = any>(
   options: Options<T>
 ): AsyncIterable<T>;
 
-/**
- * @param {import('events').EventEmitter} emitter
- * @param {{event: string, transform: () => any}} options
- */
 function forEmitOf<T = any>(emitter: SuperEmitter, options?: Options<T>) {
   if (!options) {
     options = defaults;
@@ -180,25 +176,30 @@ function forEmitOf<T = any>(emitter: SuperEmitter, options?: Options<T>) {
       if (error) {
         throw error;
       }
+
       while (events.length > 0) {
         /* We do not want to block the process!
             This call allows other processes
             a chance to execute.
         */
         await sleep(0);
+
         const [event, ...rest] = events;
         events = rest;
 
         yield options.transform ? options.transform(event) : event;
       }
+
       if (active && !error) {
         const winner = await Promise.race(getRaceItems());
+
         if (winner === timedOut) {
           emitter.removeListener(options.event, eventListener);
           emitter.removeListener(options.error, errorListener);
           options.end.forEach((event) =>
             emitter.removeListener(event, endListener)
           );
+
           throw Error("Event timed out");
         }
       }

@@ -9,11 +9,13 @@ function hadTimedOut(deadline: number) {
   const now = instant();
   return deadline < now;
 }
+
 function getDeadline(value: number) {
   return instant() + value;
 }
 
 export const timedOut = Symbol("TimedOutSymbol");
+
 export interface TimeoutWrapper {
   awaiter: Promise<symbol>;
   updateDeadline(): void;
