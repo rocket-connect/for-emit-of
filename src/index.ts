@@ -1,7 +1,7 @@
 import { EventEmitter } from "events";
 import { Readable, Writable } from "stream";
-import { timeout, TimeoutWrapper, timedOut } from "./timeout";
 import { sleep } from "./sleep";
+import { timedOut, timeout, TimeoutWrapper } from "./timeout";
 
 const defaults = {
   event: "data",
@@ -40,6 +40,10 @@ interface Options<T = any> {
    * the value will be yield as is.
    */
   transform?: (buffer: Buffer) => T;
+  /**
+   * Max number of items to be yielded. If not informed, it'll yield all items of the iterable.
+   */
+  limit?: number;
 }
 
 type SuperEmitter = (EventEmitter | Readable | Writable) & {
@@ -176,6 +180,14 @@ function forEmitOf<T = any>(emitter: SuperEmitter, options?: Options<T>) {
   const getRaceItems = raceFactory<T>(options, emitter);
 
   async function* generator() {
+    
+    function removeListeners() {
+      emitter.removeListener(options.event, eventListener);
+      emitter.removeListener(options.error, errorListener);
+      options.end.forEach((event) => emitter.removeListener(event, endListener)
+      );
+    };
+
     while (events.length || active) {
       if (error) {
         throw error;
@@ -188,21 +200,19 @@ function forEmitOf<T = any>(emitter: SuperEmitter, options?: Options<T>) {
         await sleep(0);
         const [event, ...rest] = events;
         events = rest;
-
+        
         yield options.transform ? options.transform(event) : event;
       }
+
       if (active && !error) {
         const winner = await Promise.race(getRaceItems());
         if (winner === timedOut) {
-          emitter.removeListener(options.event, eventListener);
-          emitter.removeListener(options.error, errorListener);
-          options.end.forEach((event) =>
-            emitter.removeListener(event, endListener)
-          );
+          removeListeners();
           throw Error("Event timed out");
         }
       }
     }
+    removeListeners();
   }
 
   return generator();
