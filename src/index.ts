@@ -1,13 +1,44 @@
 import { EventEmitter } from "events";
 import { Readable, Writable } from "stream";
-import * as util from "util";
+import { timeout, TimeoutWrapper, timedOut } from "./timeout";
+import { sleep } from "./sleep";
 
-const sleep = util.promisify(setTimeout);
+const defaults = {
+  event: "data",
+  error: "error",
+  end: ["close", "end"],
+};
 
-const defaults = { event: "data", error: "error" };
-
+/**
+ * Options to define AsyncIterable behavior
+ */
 interface Options<T = any> {
+  /**
+   * The event that generates the AsyncIterable items
+   */
   event?: string;
+  /**
+   * The event to be listen for errors, default "error"
+   */
+  error?: string;
+  /**
+   * The events to be listen for finalization, default ["end", "close"]
+   */
+  end?: string[];
+  /**
+   * The timeout for the first event emission. If not informed, the AsyncIterable will wait indefinitely
+   * for it. If it is informed and the timeout is reached, an error is thrown
+   */
+  firstEventTimeout?: number;
+  /**
+   * The timeout for between each event emission. If not informed, the AsyncIterable will wait indefinitely
+   * for them. If it is informed and the timeout is reached, an error is thrown
+   */
+  inBetweenTimeout?: number;
+  /**
+   * A transformation to be used for each iterable element before yielding it. If not informed,
+   * the value will be yield as is.
+   */
   transform?: (buffer: Buffer) => T;
 }
 
@@ -15,6 +46,85 @@ type SuperEmitter = (EventEmitter | Readable | Writable) & {
   readableEnded?: boolean;
   writableEnded?: boolean;
 };
+
+type TimeoutRaceFactory = () => Array<Promise<void | symbol>>;
+
+function waitResponse<T = any>(emitter: SuperEmitter, options: Options<T>) {
+  return new Promise<void>((resolve, reject) => {
+    emitter.once(options.event, () => {
+      resolve();
+      emitter.removeListener(options.error, reject);
+      options.end.forEach((event) => emitter.removeListener(event, resolve));
+    });
+    emitter.once(options.error, reject);
+    options.end.forEach((event) => emitter.once(event, resolve));
+  });
+}
+
+async function awaitAndResetTimeout<T>(
+  emitter: SuperEmitter,
+  options: Options<T>,
+  timeoutWrapper: TimeoutWrapper
+) {
+  const result = await waitResponse(emitter, options);
+  timeoutWrapper.updateDeadline();
+  return result;
+}
+
+function getInBetweenTimeoutRace<T>(
+  options: Options<T>,
+  emitter: SuperEmitter
+) {
+  const timeoutWrapper = timeout(options.inBetweenTimeout);
+  return () => [
+    awaitAndResetTimeout<T>(emitter, options, timeoutWrapper),
+    timeoutWrapper.awaiter,
+  ];
+}
+
+function getFirstAwaiter<T>(options: Options<T>, emitter: SuperEmitter) {
+  if (options.firstEventTimeout) {
+    const firstTimeout = timeout(options.firstEventTimeout);
+    return Promise.race([waitResponse(emitter, options), firstTimeout.awaiter]);
+  }
+  return waitResponse(emitter, options);
+}
+
+function switchRace<T>(
+  options: Options<T>,
+  emitter: SuperEmitter,
+  getNextRace: () => TimeoutRaceFactory
+) {
+  let timeoutRace: TimeoutRaceFactory;
+  return () =>
+    timeoutRace
+      ? timeoutRace()
+      : [
+          getFirstAwaiter<T>(options, emitter).then((result) => {
+            if (result !== timedOut) {
+              timeoutRace = getNextRace();
+            }
+            return result;
+          }),
+        ];
+}
+
+function getTimeoutRace<T>(options: Options<T>, emitter: SuperEmitter) {
+  return switchRace<T>(options, emitter, () =>
+    getInBetweenTimeoutRace(options, emitter)
+  );
+}
+
+function raceFactory<T>(options: Options<T>, emitter: SuperEmitter) {
+  if (options.inBetweenTimeout) {
+    return getTimeoutRace(options, emitter);
+  }
+
+  const getWaitResponse = () => [waitResponse<T>(emitter, options)];
+  return options.firstEventTimeout
+    ? switchRace(options, emitter, () => getWaitResponse)
+    : getWaitResponse;
+}
 
 function forEmitOf<T = any>(emitter: SuperEmitter): AsyncIterable<T>;
 function forEmitOf<T = any>(
@@ -50,43 +160,47 @@ function forEmitOf<T = any>(emitter: SuperEmitter, options?: Options<T>) {
   let events = [];
   let error: Error;
   let active = true;
-
-  emitter.on(options.event, (event) => events.push(event));
-
-  emitter.once("error", (err) => {
+  const eventListener = <T>(event: T) => events.push(event);
+  const endListener = () => {
+    active = false;
+  };
+  const errorListener = (err: Error) => {
     error = err;
+  };
+  emitter.on(options.event, eventListener);
+  emitter.once(options.error, errorListener);
+  options.end.forEach((event) => {
+    emitter.once(event, endListener);
   });
 
-  ["close", "end"].forEach((event) => {
-    emitter.once(event, () => {
-      active = false;
-    });
-  });
+  const getRaceItems = raceFactory<T>(options, emitter);
 
   async function* generator() {
     while (events.length || active) {
       if (error) {
         throw error;
       }
+      while (events.length > 0) {
+        /* We do not want to block the process!
+            This call allows other processes
+            a chance to execute.
+        */
+        await sleep(0);
+        const [event, ...rest] = events;
+        events = rest;
 
-      /* We do not want to block the process!
-         This call allows other processes
-         a chance to execute.
-       */
-      await sleep(0);
-
-      const [event, ...rest] = events;
-
-      events = rest;
-
-      if (!event) {
-        continue;
+        yield options.transform ? options.transform(event) : event;
       }
-
-      if (options.transform) {
-        yield options.transform(event);
-      } else {
-        yield event;
+      if (active && !error) {
+        const winner = await Promise.race(getRaceItems());
+        if (winner === timedOut) {
+          emitter.removeListener(options.event, eventListener);
+          emitter.removeListener(options.error, errorListener);
+          options.end.forEach((event) =>
+            emitter.removeListener(event, endListener)
+          );
+          throw Error("Event timed out");
+        }
       }
     }
   }

@@ -6,6 +6,7 @@ import { Readable } from "stream";
 import * as fs from "fs";
 import * as path from "path";
 import { EventEmitter } from "events";
+import { sleep } from "../src/sleep";
 
 describe("forEmitOf", () => {
   describe("validation", () => {
@@ -131,6 +132,252 @@ describe("forEmitOf", () => {
       // eslint-disable-next-line @typescript-eslint/no-unused-vars
       for await (const chunk of iterator) {
       }
+    });
+
+    it("should throw an error when timeout is reached", async () => {
+      const emitter = new EventEmitter();
+
+      const iterator = forEmitOf<{ message: string }>(emitter, {
+        inBetweenTimeout: 100,
+      });
+
+      setTimeout(async () => {
+        emitter.emit("data", { message: "test1" });
+        await sleep(20);
+        emitter.emit("data", { message: "test2" });
+        await sleep(120);
+        emitter.emit("data", { message: "test3" });
+        emitter.emit("end");
+      }, 10);
+
+      let result = "";
+      let errorCaught!: Error;
+
+      try {
+        for await (const chunk of iterator) {
+          result += chunk.message;
+        }
+      } catch (error) {
+        errorCaught = error;
+      }
+
+      expect(result).to.equal("test1test2");
+      expect(errorCaught).to.exist;
+      expect(errorCaught.message).to.be.eq("Event timed out");
+    });
+
+    it("should throw an error when timeout is reached only after the first emitted event", async () => {
+      const emitter = new EventEmitter();
+
+      const iterator = forEmitOf<{ message: string }>(emitter, {
+        inBetweenTimeout: 100,
+      });
+
+      setTimeout(async () => {
+        await sleep(120);
+        emitter.emit("data", { message: "test1" });
+        emitter.emit("data", { message: "test2" });
+        await sleep(120);
+        emitter.emit("data", { message: "test5" });
+        emitter.emit("end");
+      }, 10);
+
+      let result = "";
+      let errorCaught!: Error;
+
+      try {
+        for await (const chunk of iterator) {
+          await sleep(10);
+          result += chunk.message;
+        }
+      } catch (error) {
+        errorCaught = error;
+      }
+
+      expect(result).to.equal("test1test2");
+      expect(errorCaught).to.exist;
+      expect(errorCaught.message).to.be.eq("Event timed out");
+    });
+
+    it("should throw an error when first event timeout is reached before the first emitted event when firstEventTimeout is informed", async () => {
+      const emitter = new EventEmitter();
+
+      const iterator = forEmitOf<{ message: string }>(emitter, {
+        inBetweenTimeout: 100,
+        firstEventTimeout: 50,
+      });
+
+      setTimeout(async () => {
+        await sleep(60);
+        emitter.emit("data", { message: "test1" });
+        await sleep(0);
+        emitter.emit("data", { message: "test2" });
+        await sleep(120);
+        emitter.emit("data", { message: "test5" });
+        emitter.emit("end");
+      }, 10);
+
+      let result = "";
+      let errorCaught!: Error;
+
+      try {
+        for await (const chunk of iterator) {
+          await sleep(10);
+          result += chunk.message;
+        }
+      } catch (error) {
+        errorCaught = error;
+      }
+
+      expect(result).to.equal("");
+      expect(errorCaught).to.exist;
+      expect(errorCaught.message).to.be.eq("Event timed out");
+    });
+
+    it("should throw an error when first event timeout is reached before the first emitted event when firstEventTimeout is informed and inBetweenTimeout is not", async () => {
+      const emitter = new EventEmitter();
+
+      const iterator = forEmitOf<{ message: string }>(emitter, {
+        firstEventTimeout: 50,
+      });
+
+      setTimeout(async () => {
+        await sleep(60);
+        emitter.emit("data", { message: "test1" });
+        await sleep(0);
+        emitter.emit("data", { message: "test2" });
+        await sleep(120);
+        emitter.emit("data", { message: "test5" });
+        emitter.emit("end");
+      }, 10);
+
+      let result = "";
+      let errorCaught!: Error;
+
+      try {
+        for await (const chunk of iterator) {
+          await sleep(10);
+          result += chunk.message;
+        }
+      } catch (error) {
+        errorCaught = error;
+      }
+
+      expect(result).to.equal("");
+      expect(errorCaught).to.exist;
+      expect(errorCaught.message).to.be.eq("Event timed out");
+    });
+
+    it("should iterate without timeout when first event timeout is not reached before the first emitted event when firstEventTimeout is informed and inBetweenTimeout is not", async () => {
+      const emitter = new EventEmitter();
+
+      const iterator = forEmitOf<{ message: string }>(emitter, {
+        firstEventTimeout: 100,
+      });
+
+      setTimeout(async () => {
+        await sleep(60);
+        emitter.emit("data", { message: "test1" });
+        await sleep(0);
+        emitter.emit("data", { message: "test2" });
+        await sleep(120);
+        emitter.emit("data", { message: "test3" });
+        emitter.emit("end");
+      }, 10);
+
+      let result = "";
+
+      for await (const chunk of iterator) {
+        await sleep(10);
+        result += chunk.message;
+      }
+
+      expect(result).to.equal("test1test2test3");
+    });
+
+    it("should throw an error when timeout is reached, but all health events must be processed even if it's emitted faster than it can be processed", async () => {
+      const emitter = new EventEmitter();
+
+      const iterator = forEmitOf<{ message: string }>(emitter, {
+        inBetweenTimeout: 100,
+      });
+
+      setTimeout(async () => {
+        emitter.emit("data", { message: "test1" });
+        emitter.emit("data", { message: "test2" });
+        emitter.emit("data", { message: "test3" });
+        emitter.emit("data", { message: "test4" });
+        await sleep(120);
+        emitter.emit("data", { message: "test5" });
+        emitter.emit("end");
+      }, 10);
+
+      let result = "";
+      let errorCaught!: Error;
+
+      try {
+        for await (const chunk of iterator) {
+          await sleep(10);
+          result += chunk.message;
+        }
+      } catch (error) {
+        errorCaught = error;
+      }
+
+      expect(result).to.equal("test1test2test3test4");
+      expect(errorCaught).to.exist;
+      expect(errorCaught.message).to.be.eq("Event timed out");
+    });
+
+    it("event processing must be non blocking", async () => {
+      const emitter = new EventEmitter();
+
+      const iterator = forEmitOf<{ message: string }>(emitter);
+
+      let result = "";
+      setTimeout(async () => {
+        emitter.emit("data", { message: "test1" });
+        emitter.emit("data", { message: "test2" });
+        emitter.emit("data", { message: "test3" });
+        emitter.emit("data", { message: "test4" });
+        emitter.emit("end");
+      }, 10);
+
+      await sleep(10);
+      for await (const chunk of iterator) {
+        setImmediate(async () => {
+          result += ` ${chunk.message}a `;
+        });
+        result += chunk.message;
+      }
+      await sleep(0);
+
+      expect(result).to.equal(
+        "test1 test1a test2 test2a test3 test3a test4 test4a "
+      );
+    });
+
+    it("event processing must emit even falsy values", async () => {
+      const emitter = new EventEmitter();
+
+      const iterator = forEmitOf<{ message: string }>(emitter);
+
+      let result = "";
+      setTimeout(async () => {
+        emitter.emit("data", false);
+        emitter.emit("data", 0);
+        emitter.emit("data", "");
+        emitter.emit("data", "not empty");
+        emitter.emit("end");
+      }, 10);
+
+      await sleep(10);
+      for await (const chunk of iterator) {
+        result += `[${chunk}] `;
+      }
+      await sleep(0);
+
+      expect(result).to.equal("[false] [0] [] [not empty] ");
     });
   });
 });
