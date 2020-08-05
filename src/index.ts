@@ -188,11 +188,14 @@ function forEmitOf<T = any>(emitter: SuperEmitter, options?: Options<T>) {
       );
     };
 
-    while (events.length || active) {
+    let limit  = options.limit ? options.limit : true;
+    let countEvents = 0
+
+    while ((events.length || active) && limit) {
       if (error) {
         throw error;
       }
-      while (events.length > 0) {
+      while (events.length > 0 && limit) {
         /* We do not want to block the process!
             This call allows other processes
             a chance to execute.
@@ -202,6 +205,10 @@ function forEmitOf<T = any>(emitter: SuperEmitter, options?: Options<T>) {
         events = rest;
         
         yield options.transform ? options.transform(event) : event;
+        countEvents++
+        if(countEvents === limit) {
+          limit = false;
+        }
       }
 
       if (active && !error) {
