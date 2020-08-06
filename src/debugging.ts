@@ -41,3 +41,19 @@ export function debugKeepAlive<T = any>(
   }
   return countKeepAlive;
 }
+
+export function debugKeepAliveEnding<T = any>(
+  options: Options<T>,
+  countKeepAlive: number,
+  start: [number, number]
+) {
+  if (options.debug) {
+    const current = process.hrtime(start);
+    const seconds = current[0] + current[1] / 1e9;
+    console.log(
+      `Finishing keep alive control: ${countKeepAlive} keepalive cycles, ${seconds} secs, ${(
+        countKeepAlive / seconds
+      ).toFixed(2)} cycles per second`
+    );
+  }
+}

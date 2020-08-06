@@ -8,6 +8,7 @@ import {
   debugYieldLimit,
   debugRaceStart,
   debugRaceEnd,
+  debugKeepAliveEnding,
 } from "./debugging";
 
 const defaults = {
@@ -220,6 +221,8 @@ function forEmitOf<T = any>(emitter: SuperEmitter, options?: Options<T>) {
         ) {
           countKeepAlive = debugKeepAlive(options, countKeepAlive, start);
           setTimeout(keepAlive, options.keepAlive);
+        } else {
+          debugKeepAliveEnding(options, countKeepAlive, start);
         }
       }
       setTimeout(keepAlive, options.keepAlive);
