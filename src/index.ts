@@ -199,7 +199,11 @@ function forEmitOf<T = any>(emitter: SuperEmitter, options?: Options<T>) {
     if (!options.firstEventTimeout || !options.inBetweenTimeout) {
       function keepAlive() {
         setTimeout(() => {
-          if (countEvents === 0 || options.inBetweenTimeout) {
+          if (
+            active &&
+            !error &&
+            (countEvents === 0 || options.inBetweenTimeout)
+          ) {
             setTimeout(keepAlive, options.keepAlive);
           }
         }, options.keepAlive);
@@ -236,11 +240,12 @@ function forEmitOf<T = any>(emitter: SuperEmitter, options?: Options<T>) {
 
         if (winner === timedOut) {
           removeListeners();
+          active = false;
           throw Error("Event timed out");
         }
       }
     }
-
+    active = false;
     removeListeners();
   }
 
