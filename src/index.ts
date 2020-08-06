@@ -2,18 +2,26 @@ import { EventEmitter } from "events";
 import { Readable, Writable } from "stream";
 import { sleep } from "./sleep";
 import { timedOut, timeout, TimeoutWrapper } from "./timeout";
+import {
+  debugKeepAlive,
+  debugYielding,
+  debugYieldLimit,
+  debugRaceStart,
+  debugRaceEnd,
+} from "./debugging";
 
 const defaults = {
   event: "data",
   error: "error",
   end: ["close", "end"],
   keepAlive: 1000,
+  debug: false,
 };
 
 /**
  * Options to define AsyncIterable behavior
  */
-interface Options<T = any> {
+export interface Options<T = any> {
   /**
    * The event that generates the AsyncIterable items
    */
@@ -52,6 +60,11 @@ interface Options<T = any> {
    * ignored. Default: 1000
    */
   keepAlive?: number;
+  /**
+   * if some debug code lines will be printed. Useful to understand how for-emit-of are performing.
+   * Default: false
+   */
+  debug: boolean;
 }
 
 type SuperEmitter = (EventEmitter | Readable | Writable) & {
@@ -195,20 +208,21 @@ function forEmitOf<T = any>(emitter: SuperEmitter, options?: Options<T>) {
   async function* generator() {
     let shouldYield = true;
     let countEvents = 0;
+    let countKeepAlive = 0;
+    const start = process.hrtime();
 
     if (!options.firstEventTimeout || !options.inBetweenTimeout) {
       function keepAlive() {
-        setTimeout(() => {
-          if (
-            active &&
-            !error &&
-            (countEvents === 0 || !options.inBetweenTimeout)
-          ) {
-            setTimeout(keepAlive, options.keepAlive);
-          }
-        }, options.keepAlive);
+        if (
+          active &&
+          !error &&
+          (countEvents === 0 || !options.inBetweenTimeout)
+        ) {
+          countKeepAlive = debugKeepAlive(options, countKeepAlive, start);
+          setTimeout(keepAlive, options.keepAlive);
+        }
       }
-      keepAlive();
+      setTimeout(keepAlive, options.keepAlive);
     }
 
     while (shouldYield && (events.length || active)) {
@@ -217,6 +231,7 @@ function forEmitOf<T = any>(emitter: SuperEmitter, options?: Options<T>) {
       }
 
       while (shouldYield && events.length > 0) {
+        debugYielding(options, events);
         /* We do not want to block the process!
             This call allows other processes
             a chance to execute.
@@ -231,12 +246,15 @@ function forEmitOf<T = any>(emitter: SuperEmitter, options?: Options<T>) {
         countEvents++;
 
         if (options.limit && countEvents >= options.limit) {
+          debugYieldLimit(options);
           shouldYield = false;
         }
       }
 
       if (active && !error) {
+        debugRaceStart<T>(options);
         const winner = await Promise.race(getRaceItems());
+        debugRaceEnd<T>(options, winner);
 
         if (winner === timedOut) {
           removeListeners();
