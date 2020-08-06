@@ -7,6 +7,15 @@ Turn Node.js Events into Async Iterables.
 $ npm install for-emit-of
 ```
 
+- [Example](#example)
+- [Transform](#transform)
+- [Change the event](#change-the-event)
+- [Change the end](#change-the-end)
+- [Timeout](#timeout)
+  - [`firstEventTimeout`](#firsteventtimeout)
+  - [`inBetweenTimeout`](#inbetweentimeout)
+- [Limit](#limit)
+
 # Example
 ```javascript
 import forEmitOf from 'for-emit-of';
@@ -122,4 +131,30 @@ setInterval(() => {
 for await (const msg of iterator) {
   console.log(msg); // gets here once
 }
+```
+
+# Limit
+```js
+import forEmitOf from 'for-emit-of';
+import { EventEmitter } from "events";
+
+const emitter = new EventEmitter();
+
+const iterator = forEmitOf(emitter, {
+    limit: 10
+});
+
+const interval = setInterval(() => {
+   emitter.emit("data", {});
+}, 100); 
+
+let msgCount = 0;
+
+for await (const msg of iterator) {
+    msgCount += 1
+}
+
+clearInterval(interval);
+
+console.log(msgCount); // 10
 ```
