@@ -4,9 +4,7 @@ export function debugRaceEnd<T = any>(
   winner: symbol | void
 ) {
   if (options.debug) {
-    console.log(
-      `Finished response racing. Winner: ${String(winner) || "data emitting"}`
-    );
+    console.log(`Finished response racing. Winner: ${String(winner)}`);
   }
 }
 export function debugRaceStart<T = any>(options: Options<T>) {
