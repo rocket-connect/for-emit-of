@@ -202,7 +202,7 @@ function forEmitOf<T = any>(emitter: SuperEmitter, options?: Options<T>) {
           if (
             active &&
             !error &&
-            (countEvents === 0 || options.inBetweenTimeout)
+            (countEvents === 0 || !options.inBetweenTimeout)
           ) {
             setTimeout(keepAlive, options.keepAlive);
           }
