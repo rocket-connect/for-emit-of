@@ -164,6 +164,7 @@ function forEmitOf<T = any>(emitter: SuperEmitter, options?: Options<T>) {
   let events = [];
   let error: Error;
   let active = true;
+
   const eventListener = <T>(event: T) => events.push(event);
   const endListener = () => {
     active = false;
@@ -171,23 +172,19 @@ function forEmitOf<T = any>(emitter: SuperEmitter, options?: Options<T>) {
   const errorListener = (err: Error) => {
     error = err;
   };
+  const removeListeners = () => {
+    emitter.removeListener(options.event, eventListener);
+    emitter.removeListener(options.error, errorListener);
+    options.end.forEach((event) => emitter.removeListener(event, endListener));
+  };
+
   emitter.on(options.event, eventListener);
   emitter.once(options.error, errorListener);
-  options.end.forEach((event) => {
-    emitter.once(event, endListener);
-  });
+  options.end.forEach((event) => emitter.once(event, endListener));
 
   const getRaceItems = raceFactory<T>(options, emitter);
 
   async function* generator() {
-    
-    function removeListeners() {
-      emitter.removeListener(options.event, eventListener);
-      emitter.removeListener(options.error, errorListener);
-      options.end.forEach((event) => emitter.removeListener(event, endListener)
-      );
-    };
-
     let shouldYield = true;
     let countEvents = 0;
 
@@ -195,8 +192,8 @@ function forEmitOf<T = any>(emitter: SuperEmitter, options?: Options<T>) {
       if (error) {
         throw error;
       }
-      while (shouldYield && events.length > 0) {
 
+      while (shouldYield && events.length > 0) {
         /* We do not want to block the process!
             This call allows other processes
             a chance to execute.
@@ -205,10 +202,12 @@ function forEmitOf<T = any>(emitter: SuperEmitter, options?: Options<T>) {
 
         const [event, ...rest] = events;
         events = rest;
-        
+
         yield options.transform ? options.transform(event) : event;
-        countEvents++
-        if(options.limit && countEvents >= options.limit) {
+
+        countEvents++;
+
+        if (options.limit && countEvents >= options.limit) {
           shouldYield = false;
         }
       }
@@ -222,6 +221,7 @@ function forEmitOf<T = any>(emitter: SuperEmitter, options?: Options<T>) {
         }
       }
     }
+
     removeListeners();
   }
 
