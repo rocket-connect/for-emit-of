@@ -197,7 +197,7 @@ function forEmitOf<T = any>(emitter: SuperEmitter, options?: Options<T>) {
   emitter.on(options.event, eventListener);
   emitter.once(options.error, errorListener);
   options.end.forEach((event) => emitter.once(event, endListener));
-  
+
   const getRaceItems = raceFactory<T>(options, emitter);
 
   async function* generator() {
