@@ -65,7 +65,7 @@ export interface Options<T = any> {
    * if some debug code lines will be printed. Useful to understand how for-emit-of are performing.
    * Default: false
    */
-  debug: boolean;
+  debug?: boolean;
 }
 
 type SuperEmitter = (EventEmitter | Readable | Writable) & {
