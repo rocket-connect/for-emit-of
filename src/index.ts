@@ -7,7 +7,7 @@ const defaults = {
   event: "data",
   error: "error",
   end: ["close", "end"],
-  idleInterval: 1000,
+  keepAlive: 1000,
 };
 
 /**
