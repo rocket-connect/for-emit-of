@@ -138,14 +138,6 @@ function raceFactory<T>(options: Options<T>, emitter: SuperEmitter) {
     : getWaitResponse;
 }
 
-function keepAlive<T = any>(options: Options<T>, countEvents: number) {
-  setTimeout(() => {
-    if (countEvents === 0 || options.inBetweenTimeout) {
-      setTimeout(() => keepAlive(options, countEvents), options.idleInterval);
-    }
-  }, options.idleInterval);
-}
-
 function forEmitOf<T = any>(emitter: SuperEmitter): AsyncIterable<T>;
 function forEmitOf<T = any>(
   emitter: SuperEmitter,
@@ -203,8 +195,16 @@ function forEmitOf<T = any>(emitter: SuperEmitter, options?: Options<T>) {
   async function* generator() {
     let shouldYield = true;
     let countEvents = 0;
+
     if (!options.firstEventTimeout || !options.inBetweenTimeout) {
-      keepAlive<T>(options, countEvents);
+      function keepAlive() {
+        setTimeout(() => {
+          if (countEvents === 0 || options.inBetweenTimeout) {
+            setTimeout(keepAlive, options.idleInterval);
+          }
+        }, options.idleInterval);
+      }
+      keepAlive();
     }
 
     while (shouldYield && (events.length || active)) {
