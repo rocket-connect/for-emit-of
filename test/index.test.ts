@@ -380,7 +380,7 @@ describe("forEmitOf", () => {
       expect(result).to.equal("[false] [0] [] [not empty] ");
     });
 
-    it("should the number of interactions respect the limit even if the number of events is higher", async () => {
+    it("should the number of iterations respect the limit even if the number of events is higher", async () => {
       const emitter = new EventEmitter();
 
       const iterator = forEmitOf<{ message: string }>(emitter, { limit: 10 });
@@ -412,7 +412,7 @@ describe("forEmitOf", () => {
       expect(result).to.be.eqls("[false] [0] [] [not empty] [not empty 2] [not empty 2] [not empty 3] [not empty 4] [not empty 5] [not empty 6] ")
     });
 
-    it("should make all interactions if the value of limit is 0 ", async () => {
+    it("should make all iterations if the value of limit is 0 ", async () => {
       const emitter = new EventEmitter();
 
       const iterator = forEmitOf<{ message: string }>(emitter, { limit: 0 });
@@ -444,7 +444,7 @@ describe("forEmitOf", () => {
       expect(result).to.be.eqls("[false] [0] [] [not empty] [not empty 2] [not empty 2] [not empty 3] [not empty 4] [not empty 5] [not empty 6] [not empty 7] ")
     });
 
-    it("should the number of interactions respect the limit even if the number of events is higher", async () => {
+    it("should the number of iterations respect the limit even if the number of events is higher", async () => {
       const emitter = new EventEmitter();
 
       const iterator = forEmitOf<{ message: string }>(emitter, { limit: 10 });
@@ -476,7 +476,7 @@ describe("forEmitOf", () => {
       expect(result).to.be.eqls("[false] [0] [] [not empty] [not empty 2] [not empty 2] [not empty 3] [not empty 4] [not empty 5] [not empty 6] ")
     });
 
-    it("should make all interactions if has no limit ", async () => {
+    it("should make all iterations if has no limit ", async () => {
       const emitter = new EventEmitter();
 
       const iterator = forEmitOf<{ message: string }>(emitter);
