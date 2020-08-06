@@ -1,7 +1,7 @@
 import { EventEmitter } from "events";
 import { Readable, Writable } from "stream";
-import { timeout, TimeoutWrapper, timedOut } from "./timeout";
 import { sleep } from "./sleep";
+import { timedOut, timeout, TimeoutWrapper } from "./timeout";
 
 const defaults = {
   event: "data",
@@ -40,6 +40,10 @@ interface Options<T = any> {
    * the value will be yield as is.
    */
   transform?: (buffer: Buffer) => T;
+  /**
+   * Max number of items to be yielded. If not informed, it'll yield all items of the iterable.
+   */
+  limit?: number;
 }
 
 type SuperEmitter = (EventEmitter | Readable | Writable) & {
@@ -176,12 +180,23 @@ function forEmitOf<T = any>(emitter: SuperEmitter, options?: Options<T>) {
   const getRaceItems = raceFactory<T>(options, emitter);
 
   async function* generator() {
-    while (events.length || active) {
+    
+    function removeListeners() {
+      emitter.removeListener(options.event, eventListener);
+      emitter.removeListener(options.error, errorListener);
+      options.end.forEach((event) => emitter.removeListener(event, endListener)
+      );
+    };
+
+    let shouldYield = true;
+    let countEvents = 0;
+
+    while (shouldYield && (events.length || active)) {
       if (error) {
         throw error;
       }
+      while (shouldYield && events.length > 0) {
 
-      while (events.length > 0) {
         /* We do not want to block the process!
             This call allows other processes
             a chance to execute.
@@ -190,24 +205,24 @@ function forEmitOf<T = any>(emitter: SuperEmitter, options?: Options<T>) {
 
         const [event, ...rest] = events;
         events = rest;
-
+        
         yield options.transform ? options.transform(event) : event;
+        countEvents++
+        if(options.limit && countEvents >= options.limit) {
+          shouldYield = false;
+        }
       }
 
       if (active && !error) {
         const winner = await Promise.race(getRaceItems());
 
         if (winner === timedOut) {
-          emitter.removeListener(options.event, eventListener);
-          emitter.removeListener(options.error, errorListener);
-          options.end.forEach((event) =>
-            emitter.removeListener(event, endListener)
-          );
-
+          removeListeners();
           throw Error("Event timed out");
         }
       }
     }
+    removeListeners();
   }
 
   return generator();
