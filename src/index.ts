@@ -51,7 +51,7 @@ interface Options<T = any> {
    * this property defines the keepAlive time for such task. If timeout is used, this property is
    * ignored. Default: 1000
    */
-  idleInterval?: number;
+  keepAlive?: number;
 }
 
 type SuperEmitter = (EventEmitter | Readable | Writable) & {
@@ -200,9 +200,9 @@ function forEmitOf<T = any>(emitter: SuperEmitter, options?: Options<T>) {
       function keepAlive() {
         setTimeout(() => {
           if (countEvents === 0 || options.inBetweenTimeout) {
-            setTimeout(keepAlive, options.idleInterval);
+            setTimeout(keepAlive, options.keepAlive);
           }
-        }, options.idleInterval);
+        }, options.keepAlive);
       }
       keepAlive();
     }
