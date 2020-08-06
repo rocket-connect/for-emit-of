@@ -1,7 +1,7 @@
 import { EventEmitter } from "events";
 import { Readable, Writable } from "stream";
-import { timeout, TimeoutWrapper, timedOut } from "./timeout";
 import { sleep } from "./sleep";
+import { timedOut, timeout, TimeoutWrapper } from "./timeout";
 
 const defaults = {
   event: "data",
@@ -40,6 +40,10 @@ interface Options<T = any> {
    * the value will be yield as is.
    */
   transform?: (buffer: Buffer) => T;
+  /**
+   * Max number of items to be yielded. If not informed, it'll yield all items of the iterable.
+   */
+  limit?: number;
 }
 
 type SuperEmitter = (EventEmitter | Readable | Writable) & {
@@ -132,10 +136,6 @@ function forEmitOf<T = any>(
   options: Options<T>
 ): AsyncIterable<T>;
 
-/**
- * @param {import('events').EventEmitter} emitter
- * @param {{event: string, transform: () => any}} options
- */
 function forEmitOf<T = any>(emitter: SuperEmitter, options?: Options<T>) {
   if (!options) {
     options = defaults;
@@ -157,9 +157,14 @@ function forEmitOf<T = any>(emitter: SuperEmitter, options?: Options<T>) {
     }
   }
 
+  if (!Array.isArray(options.end)) {
+    throw new Error("end must be an array");
+  }
+
   let events = [];
   let error: Error;
   let active = true;
+
   const eventListener = <T>(event: T) => events.push(event);
   const endListener = () => {
     active = false;
@@ -167,42 +172,57 @@ function forEmitOf<T = any>(emitter: SuperEmitter, options?: Options<T>) {
   const errorListener = (err: Error) => {
     error = err;
   };
+  const removeListeners = () => {
+    emitter.removeListener(options.event, eventListener);
+    emitter.removeListener(options.error, errorListener);
+    options.end.forEach((event) => emitter.removeListener(event, endListener));
+  };
+
   emitter.on(options.event, eventListener);
   emitter.once(options.error, errorListener);
-  options.end.forEach((event) => {
-    emitter.once(event, endListener);
-  });
+  options.end.forEach((event) => emitter.once(event, endListener));
 
   const getRaceItems = raceFactory<T>(options, emitter);
 
   async function* generator() {
-    while (events.length || active) {
+    let shouldYield = true;
+    let countEvents = 0;
+
+    while (shouldYield && (events.length || active)) {
       if (error) {
         throw error;
       }
-      while (events.length > 0) {
+
+      while (shouldYield && events.length > 0) {
         /* We do not want to block the process!
             This call allows other processes
             a chance to execute.
         */
         await sleep(0);
+
         const [event, ...rest] = events;
         events = rest;
 
         yield options.transform ? options.transform(event) : event;
+
+        countEvents++;
+
+        if (options.limit && countEvents >= options.limit) {
+          shouldYield = false;
+        }
       }
+
       if (active && !error) {
         const winner = await Promise.race(getRaceItems());
+
         if (winner === timedOut) {
-          emitter.removeListener(options.event, eventListener);
-          emitter.removeListener(options.error, errorListener);
-          options.end.forEach((event) =>
-            emitter.removeListener(event, endListener)
-          );
+          removeListeners();
           throw Error("Event timed out");
         }
       }
     }
+
+    removeListeners();
   }
 
   return generator();

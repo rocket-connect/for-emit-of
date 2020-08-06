@@ -7,6 +7,15 @@ Turn Node.js Events into Async Iterables.
 $ npm install for-emit-of
 ```
 
+- [Example](#example)
+- [Transform](#transform)
+- [Change the event](#change-the-event)
+- [Change the end](#change-the-end)
+- [Timeout](#timeout)
+  - [`firstEventTimeout`](#firsteventtimeout)
+  - [`inBetweenTimeout`](#inbetweentimeout)
+- [Limit](#limit)
+
 # Example
 ```javascript
 import forEmitOf from 'for-emit-of';
@@ -72,6 +81,80 @@ for await (const order of iterator){
 Cart.on("checkout", (order) => { ... });
 ```
 
-# FAQ
-## When will the iterator end?
-`Emitter.on("end")` or `Emitter.on("close")`
+# Change the end
+```javascript
+import forEmitOf from 'for-emit-of';
+import { Cart } from '..';
+
+const iterator = forEmitOf(Cart, {
+    end: ["end", "close"] // default
+});
+```
+
+# Timeout
+
+## `firstEventTimeout`
+```javascript
+import forEmitOf from 'for-emit-of';
+import { EventEmitter } from "events";
+
+const emitter = new EventEmitter();
+
+const iterator = forEmitOf(emitter, {
+  firstEventTimeout: 1000,
+});
+
+setTimeout(() => {
+  emitter.emit("data", {});
+}, 2000); // greater than firstEventTimeout ERROR!
+
+for await (const msg of iterator) {
+  console.log(msg); // never get here
+}
+```
+
+## `inBetweenTimeout`
+```javascript
+import forEmitOf from 'for-emit-of';
+import { EventEmitter } from "events";
+
+const emitter = new EventEmitter();
+
+const iterator = forEmitOf(emitter, {
+  inBetweenTimeout: 1000,
+});
+
+setInterval(() => {
+    emitter.emit("data", {})
+}, 2000) // greater than inBetweenTimeout ERROR!
+ 
+for await (const msg of iterator) {
+  console.log(msg); // gets here once
+}
+```
+
+# Limit
+```js
+import forEmitOf from 'for-emit-of';
+import { EventEmitter } from "events";
+
+const emitter = new EventEmitter();
+
+const iterator = forEmitOf(emitter, {
+    limit: 10
+});
+
+const interval = setInterval(() => {
+   emitter.emit("data", {});
+}, 100); 
+
+let msgCount = 0;
+
+for await (const msg of iterator) {
+    msgCount += 1
+}
+
+clearInterval(interval);
+
+console.log(msgCount); // 10
+```
