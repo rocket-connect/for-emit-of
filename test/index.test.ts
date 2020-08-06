@@ -415,7 +415,6 @@ describe("forEmitOf", () => {
         emitter.emit("end");
       }, 10);
 
-
       await sleep(10);
       for await (const chunk of iterator) {
         count++;
@@ -423,7 +422,9 @@ describe("forEmitOf", () => {
       }
       await sleep(0);
       expect(count).to.equal(10);
-      expect(result).to.be.eqls("[false] [0] [] [not empty] [not empty 2] [not empty 2] [not empty 3] [not empty 4] [not empty 5] [not empty 6] ")
+      expect(result).to.be.eqls(
+        "[false] [0] [] [not empty] [not empty 2] [not empty 2] [not empty 3] [not empty 4] [not empty 5] [not empty 6] "
+      );
     });
 
     it("should make all iterations if the value of limit is 0 ", async () => {
@@ -447,7 +448,6 @@ describe("forEmitOf", () => {
         emitter.emit("end");
       }, 10);
 
-
       await sleep(10);
       for await (const chunk of iterator) {
         count++;
@@ -455,7 +455,9 @@ describe("forEmitOf", () => {
       }
       await sleep(0);
       expect(count).to.equal(11);
-      expect(result).to.be.eqls("[false] [0] [] [not empty] [not empty 2] [not empty 2] [not empty 3] [not empty 4] [not empty 5] [not empty 6] [not empty 7] ")
+      expect(result).to.be.eqls(
+        "[false] [0] [] [not empty] [not empty 2] [not empty 2] [not empty 3] [not empty 4] [not empty 5] [not empty 6] [not empty 7] "
+      );
     });
 
     it("should the number of iterations respect the limit even if the number of events is higher", async () => {
@@ -479,7 +481,6 @@ describe("forEmitOf", () => {
         emitter.emit("end");
       }, 10);
 
-
       await sleep(10);
       for await (const chunk of iterator) {
         count++;
@@ -487,7 +488,9 @@ describe("forEmitOf", () => {
       }
       await sleep(0);
       expect(count).to.equal(10);
-      expect(result).to.be.eqls("[false] [0] [] [not empty] [not empty 2] [not empty 2] [not empty 3] [not empty 4] [not empty 5] [not empty 6] ")
+      expect(result).to.be.eqls(
+        "[false] [0] [] [not empty] [not empty 2] [not empty 2] [not empty 3] [not empty 4] [not empty 5] [not empty 6] "
+      );
     });
 
     it("should make all iterations if has no limit ", async () => {
@@ -511,7 +514,6 @@ describe("forEmitOf", () => {
         emitter.emit("end");
       }, 10);
 
-
       await sleep(10);
       for await (const chunk of iterator) {
         count++;
@@ -519,7 +521,9 @@ describe("forEmitOf", () => {
       }
       await sleep(0);
       expect(count).to.equal(11);
-      expect(result).to.be.eqls("[false] [0] [] [not empty] [not empty 2] [not empty 2] [not empty 3] [not empty 4] [not empty 5] [not empty 6] [not empty 7] ")
+      expect(result).to.be.eqls(
+        "[false] [0] [] [not empty] [not empty 2] [not empty 2] [not empty 3] [not empty 4] [not empty 5] [not empty 6] [not empty 7] "
+      );
     });
   });
 });
