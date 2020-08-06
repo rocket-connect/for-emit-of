@@ -7,6 +7,7 @@ const defaults = {
   event: "data",
   error: "error",
   end: ["close", "end"],
+  idleInterval: 1000,
 };
 
 /**
@@ -44,6 +45,13 @@ interface Options<T = any> {
    * Max number of items to be yielded. If not informed, it'll yield all items of the iterable.
    */
   limit?: number;
+  /**
+   * The max interval, in milliseconds, of idleness for the iterable generated. For the iterable
+   * to kept node process running, it need to have at least one task not based on event created,
+   * this property defines the keepAlive time for such task. If timeout is used, this property is
+   * ignored. Default: 1000
+   */
+  idleInterval?: number;
 }
 
 type SuperEmitter = (EventEmitter | Readable | Writable) & {
@@ -130,6 +138,14 @@ function raceFactory<T>(options: Options<T>, emitter: SuperEmitter) {
     : getWaitResponse;
 }
 
+function keepAlive<T = any>(options: Options<T>, countEvents: number) {
+  setTimeout(() => {
+    if (countEvents === 0 || options.inBetweenTimeout) {
+      setTimeout(() => keepAlive(options, countEvents), options.idleInterval);
+    }
+  }, options.idleInterval);
+}
+
 function forEmitOf<T = any>(emitter: SuperEmitter): AsyncIterable<T>;
 function forEmitOf<T = any>(
   emitter: SuperEmitter,
@@ -182,11 +198,13 @@ function forEmitOf<T = any>(emitter: SuperEmitter, options?: Options<T>) {
   emitter.once(options.error, errorListener);
   options.end.forEach((event) => emitter.once(event, endListener));
 
-  const getRaceItems = raceFactory<T>(options, emitter);
-
   async function* generator() {
     let shouldYield = true;
     let countEvents = 0;
+    const getRaceItems = raceFactory<T>(options, emitter);
+    if (!options.firstEventTimeout || !options.inBetweenTimeout) {
+      keepAlive<T>(options, countEvents);
+    }
 
     while (shouldYield && (events.length || active)) {
       if (error) {
