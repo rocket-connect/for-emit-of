@@ -216,7 +216,7 @@ function forEmitOf<T = any>(emitter: SuperEmitter, options?: Options<T>) {
       options.keepAlive &&
       (!options.firstEventTimeout || !options.inBetweenTimeout)
     ) {
-      function keepAlive() {
+      const keepAlive = () => {
         if (
           active &&
           !error &&
@@ -227,7 +227,7 @@ function forEmitOf<T = any>(emitter: SuperEmitter, options?: Options<T>) {
         } else {
           debugKeepAliveEnding(options, countKeepAlive, start);
         }
-      }
+      };
       setTimeout(keepAlive, options.keepAlive);
     }
 
