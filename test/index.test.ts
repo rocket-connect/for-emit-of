@@ -525,5 +525,33 @@ describe("forEmitOf", () => {
         "[false] [0] [] [not empty] [not empty 2] [not empty 2] [not empty 3] [not empty 4] [not empty 5] [not empty 6] [not empty 7] "
       );
     });
+
+    it("keep alive should keep process running until emitter ends", async () => {
+      const emitter = new EventEmitter();
+      let finished = false;
+
+      const iterator = forEmitOf<{ message: string }>(emitter, {
+        keepAlive: 10,
+      });
+
+      process.nextTick(async () => {
+        emitter.emit("data", "1");
+        await sleep(5);
+        emitter.emit("data", "2");
+        await sleep(10);
+        emitter.emit("data", "3");
+        await sleep(30);
+        finished = true;
+        emitter.emit("end");
+      });
+      let result = "";
+
+      for await (const chunk of iterator) {
+        result += `[${chunk}] `;
+      }
+
+      expect(result).to.be.eq("[1] [2] [3] ");
+      expect(finished).to.be.true;
+    });
   });
 });
