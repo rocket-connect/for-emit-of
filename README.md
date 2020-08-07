@@ -15,6 +15,8 @@ $ npm install for-emit-of
   - [`firstEventTimeout`](#firsteventtimeout)
   - [`inBetweenTimeout`](#inbetweentimeout)
 - [Limit](#limit)
+- [Debug](#debug)
+- [Keep Alive](#keep-alive)
 
 # Example
 ```javascript
@@ -157,4 +159,33 @@ for await (const msg of iterator) {
 clearInterval(interval);
 
 console.log(msgCount); // 10
+```
+
+# Debug 
+```ts
+import forEmitOf from 'for-emit-of';
+import { EventEmitter } from "events";
+
+const emitter = new EventEmitter();
+
+const iterator = forEmitOf(emitter, {
+    limit: 10,
+    debug: true // logs
+});
+```
+
+# Keep Alive
+```ts
+import forEmitOf from 'for-emit-of';
+import { EventEmitter } from "events";
+
+const neverEmit = new EventEmitter();
+
+const iterator = forEmitOf(neverEmit, {
+    keepAlive: 1000
+});
+
+for await (const data of iterator){
+  // waiting ⌛
+}
 ```
