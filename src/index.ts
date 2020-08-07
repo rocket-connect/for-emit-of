@@ -15,7 +15,7 @@ const defaults = {
   event: "data",
   error: "error",
   end: ["close", "end"],
-  keepAlive: 1000,
+  keepAlive: 0,
   debug: false,
 };
 
@@ -56,9 +56,9 @@ export interface Options<T = any> {
   limit?: number;
   /**
    * The max interval, in milliseconds, of idleness for the iterable generated. For the iterable
-   * to kept node process running, it need to have at least one task not based on event created,
+   * to kept node process running, it need to have at least one task not based on events created,
    * this property defines the keepAlive time for such task. If timeout is used, this property is
-   * ignored. Default: 1000
+   * ignored. If 0 is informed, the keepAlive is disabled. Default: 0
    */
   keepAlive?: number;
   /**
@@ -212,7 +212,10 @@ function forEmitOf<T = any>(emitter: SuperEmitter, options?: Options<T>) {
     let countKeepAlive = 0;
     const start = process.hrtime();
 
-    if (!options.firstEventTimeout || !options.inBetweenTimeout) {
+    if (
+      options.keepAlive &&
+      (!options.firstEventTimeout || !options.inBetweenTimeout)
+    ) {
       function keepAlive() {
         if (
           active &&
