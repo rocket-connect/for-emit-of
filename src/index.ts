@@ -1,5 +1,4 @@
 import { EventEmitter } from "events";
-import { Readable, Writable } from "stream";
 import { sleep } from "./sleep";
 import { timedOut, timeout, TimeoutWrapper } from "./timeout";
 import {
@@ -10,6 +9,7 @@ import {
   debugRaceEnd,
   debugKeepAliveEnding,
 } from "./debugging";
+import { Options, SuperEmitter, TimeoutRaceFactory } from "./types";
 
 const defaults = {
   event: "data",
@@ -18,62 +18,6 @@ const defaults = {
   keepAlive: 0,
   debug: false,
 };
-
-/**
- * Options to define AsyncIterable behavior
- */
-export interface Options<T = any> {
-  /**
-   * The event that generates the AsyncIterable items
-   */
-  event?: string;
-  /**
-   * The event to be listen for errors, default "error"
-   */
-  error?: string;
-  /**
-   * The events to be listen for finalization, default ["end", "close"]
-   */
-  end?: string[];
-  /**
-   * The timeout for the first event emission. If not informed, the AsyncIterable will wait indefinitely
-   * for it. If it is informed and the timeout is reached, an error is thrown
-   */
-  firstEventTimeout?: number;
-  /**
-   * The timeout for between each event emission. If not informed, the AsyncIterable will wait indefinitely
-   * for them. If it is informed and the timeout is reached, an error is thrown
-   */
-  inBetweenTimeout?: number;
-  /**
-   * A transformation to be used for each iterable element before yielding it. If not informed,
-   * the value will be yield as is.
-   */
-  transform?: (buffer: Buffer) => T;
-  /**
-   * Max number of items to be yielded. If not informed, it'll yield all items of the iterable.
-   */
-  limit?: number;
-  /**
-   * The max interval, in milliseconds, of idleness for the iterable generated. For the iterable
-   * to kept node process running, it need to have at least one task not based on events created,
-   * this property defines the keepAlive time for such task. If timeout is used, this property is
-   * ignored. If 0 is informed, the keepAlive is disabled. Default: 0
-   */
-  keepAlive?: number;
-  /**
-   * if some debug code lines will be printed. Useful to understand how for-emit-of are performing.
-   * Default: false
-   */
-  debug?: boolean;
-}
-
-type SuperEmitter = (EventEmitter | Readable | Writable) & {
-  readableEnded?: boolean;
-  writableEnded?: boolean;
-};
-
-type TimeoutRaceFactory = () => Array<Promise<void | symbol>>;
 
 function waitResponse<T = any>(emitter: SuperEmitter, options: Options<T>) {
   return new Promise<void>((resolve, reject) => {
@@ -216,7 +160,7 @@ function forEmitOf<T = any>(emitter: SuperEmitter, options?: Options<T>) {
       options.keepAlive &&
       (!options.firstEventTimeout || !options.inBetweenTimeout)
     ) {
-      function keepAlive() {
+      const keepAlive = () => {
         if (
           active &&
           !error &&
@@ -227,7 +171,7 @@ function forEmitOf<T = any>(emitter: SuperEmitter, options?: Options<T>) {
         } else {
           debugKeepAliveEnding(options, countKeepAlive, start);
         }
-      }
+      };
       setTimeout(keepAlive, options.keepAlive);
     }
 
@@ -258,9 +202,9 @@ function forEmitOf<T = any>(emitter: SuperEmitter, options?: Options<T>) {
       }
 
       if (active && !error) {
-        debugRaceStart<T>(options);
+        debugRaceStart(options);
         const winner = await Promise.race(getRaceItems());
-        debugRaceEnd<T>(options, winner);
+        debugRaceEnd(options, winner);
 
         if (winner === timedOut) {
           removeListeners();
@@ -276,4 +220,4 @@ function forEmitOf<T = any>(emitter: SuperEmitter, options?: Options<T>) {
   return generator();
 }
 
-export default forEmitOf;
+export = forEmitOf;
