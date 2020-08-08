@@ -220,4 +220,4 @@ function forEmitOf<T = any>(emitter: SuperEmitter, options?: Options<T>) {
   return generator();
 }
 
-export default forEmitOf;
+export = forEmitOf;
