@@ -22,7 +22,7 @@ const defaults = {
 /**
  * Options to define AsyncIterable behavior
  */
-export interface Options<T = any> {
+interface Options<T = any> {
   /**
    * The event that generates the AsyncIterable items
    */
@@ -222,10 +222,14 @@ function forEmitOf<T = any>(emitter: SuperEmitter, options?: Options<T>) {
           !error &&
           (countEvents === 0 || !options.inBetweenTimeout)
         ) {
-          countKeepAlive = debugKeepAlive(options, countKeepAlive, start);
+          countKeepAlive = debugKeepAlive(
+            { debug: options.debug },
+            countKeepAlive,
+            start
+          );
           setTimeout(keepAlive, options.keepAlive);
         } else {
-          debugKeepAliveEnding(options, countKeepAlive, start);
+          debugKeepAliveEnding({ debug: options.debug }, countKeepAlive, start);
         }
       };
       setTimeout(keepAlive, options.keepAlive);
@@ -237,7 +241,7 @@ function forEmitOf<T = any>(emitter: SuperEmitter, options?: Options<T>) {
       }
 
       while (shouldYield && events.length > 0) {
-        debugYielding(options, events);
+        debugYielding({ debug: options.debug }, events);
         /* We do not want to block the process!
             This call allows other processes
             a chance to execute.
@@ -252,15 +256,15 @@ function forEmitOf<T = any>(emitter: SuperEmitter, options?: Options<T>) {
         countEvents++;
 
         if (options.limit && countEvents >= options.limit) {
-          debugYieldLimit(options);
+          debugYieldLimit({ debug: options.debug });
           shouldYield = false;
         }
       }
 
       if (active && !error) {
-        debugRaceStart<T>(options);
+        debugRaceStart<T>({ debug: options.debug });
         const winner = await Promise.race(getRaceItems());
-        debugRaceEnd<T>(options, winner);
+        debugRaceEnd<T>({ debug: options.debug }, winner);
 
         if (winner === timedOut) {
           removeListeners();
@@ -276,4 +280,4 @@ function forEmitOf<T = any>(emitter: SuperEmitter, options?: Options<T>) {
   return generator();
 }
 
-export default forEmitOf;
+export = forEmitOf;

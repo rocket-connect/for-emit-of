@@ -1,31 +1,31 @@
-import { Options } from "./index";
-export function debugRaceEnd<T = any>(
-  options: Options<T>,
-  winner: symbol | void
-) {
+interface Options {
+  debug: boolean;
+}
+
+export function debugRaceEnd<T = any>(options: Options, winner: symbol | void) {
   if (options.debug) {
     console.log(`Finished response racing. Winner: ${String(winner)}`);
   }
 }
-export function debugRaceStart<T = any>(options: Options<T>) {
+export function debugRaceStart<T = any>(options: Options) {
   if (options.debug) {
     console.log(
       "No more results to yield but emitter still active. Starting timeout race"
     );
   }
 }
-export function debugYieldLimit<T = any>(options: Options<T>) {
+export function debugYieldLimit<T = any>(options: Options) {
   if (options.debug) {
     console.log("Yielding limit reached! Stopping iterator");
   }
 }
-export function debugYielding<T = any>(options: Options<T>, events: any[]) {
+export function debugYielding<T = any>(options: Options, events: any[]) {
   if (options.debug) {
     console.log(`Results to yield: ${events.length}`);
   }
 }
 export function debugKeepAlive<T = any>(
-  options: Options<T>,
+  options: Options,
   countKeepAlive: number,
   start: [number, number]
 ) {
@@ -43,7 +43,7 @@ export function debugKeepAlive<T = any>(
 }
 
 export function debugKeepAliveEnding<T = any>(
-  options: Options<T>,
+  options: Options,
   countKeepAlive: number,
   start: [number, number]
 ) {
