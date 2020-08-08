@@ -1,6 +1,4 @@
-interface Options {
-  debug: boolean;
-}
+import { Options } from "./types";
 
 export function debugRaceEnd<T = any>(options: Options, winner: symbol | void) {
   if (options.debug) {
