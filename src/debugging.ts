@@ -1,4 +1,5 @@
-import { Options } from "./index";
+import { Options } from "./types";
+
 export function debugRaceEnd<T = any>(
   options: Options<T>,
   winner: symbol | void
@@ -7,6 +8,7 @@ export function debugRaceEnd<T = any>(
     console.log(`Finished response racing. Winner: ${String(winner)}`);
   }
 }
+
 export function debugRaceStart<T = any>(options: Options<T>) {
   if (options.debug) {
     console.log(
@@ -14,16 +16,19 @@ export function debugRaceStart<T = any>(options: Options<T>) {
     );
   }
 }
+
 export function debugYieldLimit<T = any>(options: Options<T>) {
   if (options.debug) {
     console.log("Yielding limit reached! Stopping iterator");
   }
 }
+
 export function debugYielding<T = any>(options: Options<T>, events: any[]) {
   if (options.debug) {
     console.log(`Results to yield: ${events.length}`);
   }
 }
+
 export function debugKeepAlive<T = any>(
   options: Options<T>,
   countKeepAlive: number,
