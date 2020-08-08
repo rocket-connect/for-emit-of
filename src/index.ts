@@ -202,9 +202,9 @@ function forEmitOf<T = any>(emitter: SuperEmitter, options?: Options<T>) {
       }
 
       if (active && !error) {
-        debugRaceStart<T>(options);
+        debugRaceStart(options);
         const winner = await Promise.race(getRaceItems());
-        debugRaceEnd<T>(options, winner);
+        debugRaceEnd(options, winner);
 
         if (winner === timedOut) {
           removeListeners();
