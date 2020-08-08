@@ -1,39 +1,43 @@
 import { sleep } from "./sleep";
-
-function instant() {
-  const [s, ns] = process.hrtime();
-  return s * 1e3 + ns / 1e6;
-}
+import { instant } from "./instant";
+import { Context } from "./types";
 
 function hadTimedOut(deadline: number) {
   const now = instant();
   return deadline < now;
 }
 
-function getDeadline(value: number) {
-  return instant() + value;
+function getDeadline(value: number, context: Context): number {
+  return context.lastResultAt + value;
 }
 
 export const timedOut = Symbol("TimedOutSymbol");
 
 export interface TimeoutWrapper {
-  awaiter: Promise<symbol>;
-  updateDeadline(): void;
+  awaiter(): Promise<symbol>;
 }
 
-export function timeout(value: number): TimeoutWrapper {
-  let deadline = getDeadline(value);
+export function timeout(value: number, context: Context): TimeoutWrapper {
+  let currentAwaiter: Promise<symbol> | undefined;
   function getAwaiter(): Promise<symbol> {
-    return sleep(Math.max(deadline - instant(), 0)).then(() =>
-      hadTimedOut(deadline) ? timedOut : getAwaiter()
+    return sleep(Math.max(getDeadline(value, context) - instant(), 0)).then(
+      () => {
+        if (hadTimedOut(getDeadline(value, context))) {
+          currentAwaiter = undefined;
+          return timedOut;
+        }
+
+        return getAwaiter();
+      }
     );
   }
-  const awaiter = getAwaiter();
 
   return {
-    awaiter,
-    updateDeadline() {
-      deadline = getDeadline(value);
+    awaiter() {
+      if (!currentAwaiter) {
+        currentAwaiter = getAwaiter();
+      }
+      return currentAwaiter;
     },
   };
 }

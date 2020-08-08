@@ -1,6 +1,6 @@
 import { EventEmitter } from "events";
 import { sleep } from "./sleep";
-import { timedOut, timeout, TimeoutWrapper } from "./timeout";
+import { timedOut, timeout } from "./timeout";
 import {
   debugKeepAlive,
   debugYielding,
@@ -9,7 +9,8 @@ import {
   debugRaceEnd,
   debugKeepAliveEnding,
 } from "./debugging";
-import { Options, SuperEmitter, TimeoutRaceFactory } from "./types";
+import { Options, SuperEmitter, TimeoutRaceFactory, Context } from "./types";
+import { instant } from "./instant";
 
 const defaults = {
   event: "data",
@@ -31,31 +32,26 @@ function waitResponse<T = any>(emitter: SuperEmitter, options: Options<T>) {
   });
 }
 
-async function awaitAndResetTimeout<T>(
-  emitter: SuperEmitter,
-  options: Options<T>,
-  timeoutWrapper: TimeoutWrapper
-) {
-  const result = await waitResponse(emitter, options);
-  timeoutWrapper.updateDeadline();
-  return result;
-}
-
 function getInBetweenTimeoutRace<T>(
   options: Options<T>,
-  emitter: SuperEmitter
+  emitter: SuperEmitter,
+  context: Context
 ) {
-  const timeoutWrapper = timeout(options.inBetweenTimeout);
-  return () => [
-    awaitAndResetTimeout<T>(emitter, options, timeoutWrapper),
-    timeoutWrapper.awaiter,
-  ];
+  const timeoutWrapper = timeout(options.inBetweenTimeout, context);
+  return () => [waitResponse<T>(emitter, options), timeoutWrapper.awaiter()];
 }
 
-function getFirstAwaiter<T>(options: Options<T>, emitter: SuperEmitter) {
+function getFirstAwaiter<T>(
+  options: Options<T>,
+  emitter: SuperEmitter,
+  context: Context
+) {
   if (options.firstEventTimeout) {
-    const firstTimeout = timeout(options.firstEventTimeout);
-    return Promise.race([waitResponse(emitter, options), firstTimeout.awaiter]);
+    const firstTimeout = timeout(options.firstEventTimeout, context);
+    return Promise.race([
+      waitResponse(emitter, options),
+      firstTimeout.awaiter(),
+    ]);
   }
   return waitResponse(emitter, options);
 }
@@ -63,14 +59,15 @@ function getFirstAwaiter<T>(options: Options<T>, emitter: SuperEmitter) {
 function switchRace<T>(
   options: Options<T>,
   emitter: SuperEmitter,
-  getNextRace: () => TimeoutRaceFactory
+  getNextRace: () => TimeoutRaceFactory,
+  context: Context
 ) {
   let timeoutRace: TimeoutRaceFactory;
   return () =>
     timeoutRace
       ? timeoutRace()
       : [
-          getFirstAwaiter<T>(options, emitter).then((result) => {
+          getFirstAwaiter<T>(options, emitter, context).then((result) => {
             if (result !== timedOut) {
               timeoutRace = getNextRace();
             }
@@ -79,20 +76,31 @@ function switchRace<T>(
         ];
 }
 
-function getTimeoutRace<T>(options: Options<T>, emitter: SuperEmitter) {
-  return switchRace<T>(options, emitter, () =>
-    getInBetweenTimeoutRace(options, emitter)
+function getTimeoutRace<T>(
+  options: Options<T>,
+  emitter: SuperEmitter,
+  context: Context
+) {
+  return switchRace<T>(
+    options,
+    emitter,
+    () => getInBetweenTimeoutRace(options, emitter, context),
+    context
   );
 }
 
-function raceFactory<T>(options: Options<T>, emitter: SuperEmitter) {
+function raceFactory<T>(
+  options: Options<T>,
+  emitter: SuperEmitter,
+  context: Context
+) {
   if (options.inBetweenTimeout) {
-    return getTimeoutRace(options, emitter);
+    return getTimeoutRace(options, emitter, context);
   }
 
   const getWaitResponse = () => [waitResponse<T>(emitter, options)];
   return options.firstEventTimeout
-    ? switchRace(options, emitter, () => getWaitResponse)
+    ? switchRace(options, emitter, () => getWaitResponse, context)
     : getWaitResponse;
 }
 
@@ -130,8 +138,14 @@ function forEmitOf<T = any>(emitter: SuperEmitter, options?: Options<T>) {
   let events = [];
   let error: Error;
   let active = true;
+  const context: Context = {
+    lastResultAt: 0,
+  };
 
-  const eventListener = <T>(event: T) => events.push(event);
+  const eventListener = <T>(event: T) => {
+    context.lastResultAt = instant();
+    return events.push(event);
+  };
   const endListener = () => {
     active = false;
   };
@@ -148,7 +162,7 @@ function forEmitOf<T = any>(emitter: SuperEmitter, options?: Options<T>) {
   emitter.once(options.error, errorListener);
   options.end.forEach((event) => emitter.once(event, endListener));
 
-  const getRaceItems = raceFactory<T>(options, emitter);
+  const getRaceItems = raceFactory<T>(options, emitter, context);
 
   async function* generator() {
     let shouldYield = true;
@@ -206,7 +220,7 @@ function forEmitOf<T = any>(emitter: SuperEmitter, options?: Options<T>) {
         const winner = await Promise.race(getRaceItems());
         debugRaceEnd(options, winner);
 
-        if (winner === timedOut) {
+        if (winner === timedOut && events.length === 0) {
           removeListeners();
           active = false;
           throw Error("Event timed out");
@@ -217,6 +231,7 @@ function forEmitOf<T = any>(emitter: SuperEmitter, options?: Options<T>) {
     removeListeners();
   }
 
+  context.lastResultAt = instant();
   return generator();
 }
 

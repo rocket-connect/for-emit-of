@@ -50,6 +50,10 @@ export interface Options<T = any> {
   debug?: boolean;
 }
 
+export interface Context {
+  lastResultAt: number;
+}
+
 export type SuperEmitter = (EventEmitter | Readable | Writable) & {
   readableEnded?: boolean;
   writableEnded?: boolean;
