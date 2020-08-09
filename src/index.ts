@@ -38,7 +38,7 @@ function getInBetweenTimeoutRace<T>(
   context: Context
 ) {
   const timeoutWrapper = timeout(options.inBetweenTimeout, context);
-  return () => [waitResponse<T>(emitter, options), timeoutWrapper.awaiter()];
+  return () => [waitResponse<T>(emitter, options), timeoutWrapper.awaiter];
 }
 
 function getFirstAwaiter<T>(
@@ -48,10 +48,7 @@ function getFirstAwaiter<T>(
 ) {
   if (options.firstEventTimeout) {
     const firstTimeout = timeout(options.firstEventTimeout, context);
-    return Promise.race([
-      waitResponse(emitter, options),
-      firstTimeout.awaiter(),
-    ]);
+    return Promise.race([waitResponse(emitter, options), firstTimeout.awaiter]);
   }
   return waitResponse(emitter, options);
 }

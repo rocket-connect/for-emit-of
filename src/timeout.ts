@@ -14,30 +14,21 @@ function getDeadline(value: number, context: Context): number {
 export const timedOut = Symbol("TimedOutSymbol");
 
 export interface TimeoutWrapper {
-  awaiter(): Promise<symbol>;
+  awaiter: Promise<symbol>;
 }
 
 export function timeout(value: number, context: Context): TimeoutWrapper {
-  let currentAwaiter: Promise<symbol> | undefined;
   function getAwaiter(): Promise<symbol> {
-    return sleep(Math.max(getDeadline(value, context) - instant(), 0)).then(
-      () => {
-        if (hadTimedOut(getDeadline(value, context))) {
-          currentAwaiter = undefined;
-          return timedOut;
-        }
-
-        return getAwaiter();
-      }
+    return sleep(
+      Math.max(getDeadline(value, context) - instant(), 0)
+    ).then(() =>
+      hadTimedOut(getDeadline(value, context)) ? timedOut : getAwaiter()
     );
   }
 
+  const awaiter = getAwaiter();
+
   return {
-    awaiter() {
-      if (!currentAwaiter) {
-        currentAwaiter = getAwaiter();
-      }
-      return currentAwaiter;
-    },
+    awaiter,
   };
 }
