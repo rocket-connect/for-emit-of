@@ -217,7 +217,7 @@ function forEmitOf<T = any>(emitter: SuperEmitter, options?: Options<T>) {
         const winner = await Promise.race(getRaceItems());
         debugRaceEnd(options, winner);
 
-        if (winner === timedOut && events.length === 0) {
+        if (winner === timedOut) {
           removeListeners();
           active = false;
           throw Error("Event timed out");
