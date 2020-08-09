@@ -186,6 +186,7 @@ function forEmitOf<T = any>(emitter: SuperEmitter, options?: Options<T>) {
       setTimeout(keepAlive, options.keepAlive);
     }
 
+    context.lastResultAt = instant();
     while (shouldYield && (events.length || active)) {
       if (error) {
         throw error;
@@ -228,7 +229,6 @@ function forEmitOf<T = any>(emitter: SuperEmitter, options?: Options<T>) {
     removeListeners();
   }
 
-  context.lastResultAt = instant();
   return generator();
 }
 
