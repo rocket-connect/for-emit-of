@@ -343,6 +343,34 @@ describe("forEmitOf", () => {
       expect(errorCaught.message).to.be.eq("Event timed out");
     });
 
+    it("should not throw timeout for delays caused by the 'for await of' using the generated Async Iterable", async () => {
+      const emitter = new EventEmitter();
+
+      const iterator = forEmitOf<{ message: string }>(emitter, {
+        firstEventTimeout: 100,
+        inBetweenTimeout: 100,
+      });
+
+      setTimeout(async () => {
+        emitter.emit("data", { message: "test1" });
+        emitter.emit("data", { message: "test2" });
+        await sleep(80);
+        emitter.emit("data", { message: "test3" });
+        await sleep(80);
+        emitter.emit("data", { message: "test4" });
+        emitter.emit("end");
+      }, 10);
+
+      let result = "";
+
+      for await (const chunk of iterator) {
+        await sleep(50);
+        result += chunk.message;
+      }
+
+      expect(result).to.equal("test1test2test3test4");
+    });
+
     it("event processing must be non blocking", async () => {
       const emitter = new EventEmitter();
 
