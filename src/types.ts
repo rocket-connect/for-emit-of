@@ -52,6 +52,7 @@ export interface Options<T = any> {
 
 export interface Context {
   lastResultAt: number;
+  shouldYield: boolean;
 }
 
 export type SuperEmitter = (EventEmitter | Readable | Writable) & {
@@ -60,3 +61,4 @@ export type SuperEmitter = (EventEmitter | Readable | Writable) & {
 };
 
 export type TimeoutRaceFactory = () => Array<Promise<void | symbol>>;
+export const Abort = Symbol("AbortIterable");

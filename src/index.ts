@@ -8,9 +8,11 @@ import {
   debugRaceStart,
   debugRaceEnd,
   debugKeepAliveEnding,
+  debugIteratorReturn,
 } from "./debugging";
 import { Options, SuperEmitter, TimeoutRaceFactory, Context } from "./types";
 import { instant } from "./instant";
+import { getAbortControl } from "./get-abort-control";
 
 const defaults = {
   event: "data",
@@ -107,7 +109,10 @@ function forEmitOf<T = any>(
   options: Options<T>
 ): AsyncIterable<T>;
 
-function forEmitOf<T = any>(emitter: SuperEmitter, options?: Options<T>) {
+function forEmitOf<T = any>(
+  emitter: SuperEmitter,
+  options?: Options<T>
+): AsyncIterable<T> {
   if (!options) {
     options = defaults;
   }
@@ -137,6 +142,7 @@ function forEmitOf<T = any>(emitter: SuperEmitter, options?: Options<T>) {
   let active = true;
   const context: Context = {
     lastResultAt: 0,
+    shouldYield: true,
   };
 
   const eventListener = <T>(event: T) => {
@@ -159,11 +165,11 @@ function forEmitOf<T = any>(emitter: SuperEmitter, options?: Options<T>) {
   emitter.on(options.event, eventListener);
   emitter.once(options.error, errorListener);
   options.end.forEach((event) => emitter.once(event, endListener));
+  const abortControl = getAbortControl(context);
 
   const getRaceItems = raceFactory<T>(options, emitter, context);
 
-  async function* generator() {
-    let shouldYield = true;
+  function generator() {
     let countEvents = 0;
     let countKeepAlive = 0;
     const start = process.hrtime();
@@ -188,46 +194,61 @@ function forEmitOf<T = any>(emitter: SuperEmitter, options?: Options<T>) {
     }
 
     context.lastResultAt = instant();
-    while (shouldYield && (events.length || active)) {
-      if (error) {
-        throw error;
-      }
+    return {
+      [Symbol.asyncIterator]() {
+        return {
+          async next(): Promise<IteratorResult<T>> {
+            if (error) {
+              throw error;
+            }
 
-      while (shouldYield && events.length > 0) {
-        debugYielding(options, events);
-        /* We do not want to block the process!
+            if (context.shouldYield && !events.length && active) {
+              debugRaceStart(options);
+              const winner = await Promise.race([
+                ...getRaceItems(),
+                abortControl.onAbort,
+              ]);
+              debugRaceEnd(options, winner);
+
+              if (winner === timedOut) {
+                removeListeners();
+                active = false;
+                throw Error("Event timed out");
+              }
+            }
+            if (!context.shouldYield || (events.length === 0 && !active)) {
+              return { done: true } as IteratorResult<T>;
+            }
+            debugYielding(options, events);
+            /* We do not want to block the process!
             This call allows other processes
             a chance to execute.
         */
-        await sleep(0);
+            await sleep(0);
 
-        const [event, ...rest] = events;
-        events = rest;
+            const [event, ...rest] = events;
+            events = rest;
+            countEvents++;
 
-        yield options.transform ? options.transform(event) : event;
+            if (options.limit && countEvents >= options.limit) {
+              debugYieldLimit(options);
+              context.shouldYield = false;
+            }
 
-        countEvents++;
-
-        if (options.limit && countEvents >= options.limit) {
-          debugYieldLimit(options);
-          shouldYield = false;
-        }
-      }
-
-      if (active && !error) {
-        debugRaceStart(options);
-        const winner = await Promise.race(getRaceItems());
-        debugRaceEnd(options, winner);
-
-        if (winner === timedOut) {
-          removeListeners();
-          active = false;
-          throw Error("Event timed out");
-        }
-      }
-    }
-    active = false;
-    removeListeners();
+            return {
+              done: false,
+              value: options.transform ? options.transform(event) : event,
+            };
+          },
+          async return(value?: any) {
+            context.shouldYield = false;
+            removeListeners();
+            debugIteratorReturn(options);
+            return { done: true, value } as IteratorResult<any>;
+          },
+        };
+      },
+    };
   }
 
   return generator();

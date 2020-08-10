@@ -1,5 +1,5 @@
 /* eslint-disable @typescript-eslint/ban-ts-ignore */
-import { expect } from "chai";
+import { expect, use } from "chai";
 import { EventEmitter } from "events";
 import * as fs from "fs";
 import { describe } from "mocha";
@@ -7,6 +7,11 @@ import * as path from "path";
 import { Readable } from "stream";
 import forEmitOf from "../src";
 import { sleep } from "../src/sleep";
+import { stub } from "sinon";
+import sinonChai from "sinon-chai";
+import debugging = require("../src/debugging");
+
+use(sinonChai);
 
 describe("forEmitOf", () => {
   describe("validation", () => {
@@ -582,13 +587,13 @@ describe("forEmitOf", () => {
       expect(finished).to.be.true;
     });
 
-    it("should cancel the iteration if shouldCancel is informed and resolves to true", async () => {
+    it("should abort the iteration if [Abort] is called", async () => {
       const emitter = new EventEmitter();
       let counter = 0;
+      stub(debugging, "debugYielding");
+      stub(debugging, "debugIteratorReturn");
 
-      const iterator = forEmitOf<{ message: string }>(emitter, {
-        shouldCancel: () => counter > 1,
-      });
+      const iterator = forEmitOf<{ message: string }>(emitter);
 
       process.nextTick(async () => {
         emitter.emit("data", "1");
@@ -601,8 +606,13 @@ describe("forEmitOf", () => {
       for await (const chunk of iterator) {
         counter++;
         result += `[${chunk}] `;
+        if (counter > 1) {
+          break;
+        }
       }
 
+      expect(debugging.debugYielding).to.have.been.calledTwice;
+      expect(debugging.debugIteratorReturn).to.have.been.called;
       expect(result).to.be.eq("[1] [2] ");
       expect(counter).to.be.eq(2);
     });
