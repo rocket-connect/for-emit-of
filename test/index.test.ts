@@ -587,7 +587,7 @@ describe("forEmitOf", () => {
       expect(finished).to.be.true;
     });
 
-    it("should abort the iteration if [Abort] is called", async () => {
+    it("should abort the iteration if a break is used", async () => {
       const emitter = new EventEmitter();
       let counter = 0;
       stub(debugging, "debugYielding");
