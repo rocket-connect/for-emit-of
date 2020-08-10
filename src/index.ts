@@ -216,9 +216,9 @@ function forEmitOf<T = any>(
             }
             debugYielding(options, events);
             /* We do not want to block the process!
-            This call allows other processes
-            a chance to execute.
-        */
+              This call allows other processes
+              a chance to execute.
+            */
             await sleep(0);
 
             const [event, ...rest] = events;
