@@ -12,7 +12,6 @@ import {
 } from "./debugging";
 import { Options, SuperEmitter, TimeoutRaceFactory, Context } from "./types";
 import { instant } from "./instant";
-import { getAbortControl } from "./get-abort-control";
 
 const defaults = {
   event: "data",
@@ -164,7 +163,6 @@ function forEmitOf<T = any>(
   emitter.on(options.event, eventListener);
   emitter.once(options.error, errorListener);
   options.end.forEach((event) => emitter.once(event, endListener));
-  const abortControl = getAbortControl(context);
 
   const getRaceItems = raceFactory<T>(options, emitter, context);
 
@@ -204,10 +202,7 @@ function forEmitOf<T = any>(
 
             if (shouldYield && !events.length && active) {
               debugRaceStart(options);
-              const winner = await Promise.race([
-                ...getRaceItems(),
-                abortControl.onAbort,
-              ]);
+              const winner = await Promise.race(getRaceItems());
               debugRaceEnd(options, winner);
 
               if (winner === timedOut) {
