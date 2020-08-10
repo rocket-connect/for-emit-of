@@ -581,5 +581,30 @@ describe("forEmitOf", () => {
       expect(result).to.be.eq("[1] [2] [3] ");
       expect(finished).to.be.true;
     });
+
+    it("should cancel the iteration if shouldCancel is informed and resolves to true", async () => {
+      const emitter = new EventEmitter();
+      let counter = 0;
+
+      const iterator = forEmitOf<{ message: string }>(emitter, {
+        shouldCancel: () => counter > 1,
+      });
+
+      process.nextTick(async () => {
+        emitter.emit("data", "1");
+        emitter.emit("data", "2");
+        emitter.emit("data", "3");
+        emitter.emit("end");
+      });
+      let result = "";
+
+      for await (const chunk of iterator) {
+        counter++;
+        result += `[${chunk}] `;
+      }
+
+      expect(result).to.be.eq("[1] [2] ");
+      expect(counter).to.be.eq(2);
+    });
   });
 });

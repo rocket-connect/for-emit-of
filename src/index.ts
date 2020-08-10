@@ -150,6 +150,7 @@ function forEmitOf<T = any>(emitter: SuperEmitter, options?: Options<T>) {
     error = err;
   };
   const removeListeners = () => {
+    events = [];
     emitter.removeListener(options.event, eventListener);
     emitter.removeListener(options.error, errorListener);
     options.end.forEach((event) => emitter.removeListener(event, endListener));
@@ -209,6 +210,8 @@ function forEmitOf<T = any>(emitter: SuperEmitter, options?: Options<T>) {
 
         if (options.limit && countEvents >= options.limit) {
           debugYieldLimit(options);
+          shouldYield = false;
+        } else if (options.shouldCancel && options.shouldCancel()) {
           shouldYield = false;
         }
       }
