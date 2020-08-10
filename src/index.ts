@@ -167,10 +167,20 @@ function forEmitOf<T = any>(
   const getRaceItems = raceFactory<T>(options, emitter, context);
 
   function generator() {
+    let completed = false;
     let shouldYield = true;
     let countEvents = 0;
     let countKeepAlive = 0;
     const start = process.hrtime();
+    async function runReturn(value?: any) {
+      if (!completed) {
+        shouldYield = false;
+        completed = true;
+        removeListeners();
+        debugIteratorReturn(options);
+      }
+      return { done: true, value } as IteratorResult<any>;
+    }
 
     if (
       options.keepAlive &&
@@ -212,7 +222,7 @@ function forEmitOf<T = any>(
               }
             }
             if (!shouldYield || (events.length === 0 && !active)) {
-              return { done: true } as IteratorResult<T>;
+              return runReturn();
             }
             debugYielding(options, events);
             /* We do not want to block the process!
@@ -235,12 +245,7 @@ function forEmitOf<T = any>(
               value: options.transform ? options.transform(event) : event,
             };
           },
-          async return(value?: any) {
-            shouldYield = false;
-            removeListeners();
-            debugIteratorReturn(options);
-            return { done: true, value } as IteratorResult<any>;
-          },
+          return: runReturn,
         };
       },
     };
