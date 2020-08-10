@@ -142,7 +142,6 @@ function forEmitOf<T = any>(
   let active = true;
   const context: Context = {
     lastResultAt: 0,
-    shouldYield: true,
   };
 
   const eventListener = <T>(event: T) => {
@@ -170,6 +169,7 @@ function forEmitOf<T = any>(
   const getRaceItems = raceFactory<T>(options, emitter, context);
 
   function generator() {
+    let shouldYield = true;
     let countEvents = 0;
     let countKeepAlive = 0;
     const start = process.hrtime();
@@ -202,7 +202,7 @@ function forEmitOf<T = any>(
               throw error;
             }
 
-            if (context.shouldYield && !events.length && active) {
+            if (shouldYield && !events.length && active) {
               debugRaceStart(options);
               const winner = await Promise.race([
                 ...getRaceItems(),
@@ -216,7 +216,7 @@ function forEmitOf<T = any>(
                 throw Error("Event timed out");
               }
             }
-            if (!context.shouldYield || (events.length === 0 && !active)) {
+            if (!shouldYield || (events.length === 0 && !active)) {
               return { done: true } as IteratorResult<T>;
             }
             debugYielding(options, events);
@@ -232,7 +232,7 @@ function forEmitOf<T = any>(
 
             if (options.limit && countEvents >= options.limit) {
               debugYieldLimit(options);
-              context.shouldYield = false;
+              shouldYield = false;
             }
 
             return {
@@ -241,7 +241,7 @@ function forEmitOf<T = any>(
             };
           },
           async return(value?: any) {
-            context.shouldYield = false;
+            shouldYield = false;
             removeListeners();
             debugIteratorReturn(options);
             return { done: true, value } as IteratorResult<any>;

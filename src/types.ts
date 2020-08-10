@@ -52,7 +52,6 @@ export interface Options<T = any> {
 
 export interface Context {
   lastResultAt: number;
-  shouldYield: boolean;
 }
 
 export type SuperEmitter = (EventEmitter | Readable | Writable) & {
