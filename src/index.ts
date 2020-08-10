@@ -211,8 +211,6 @@ function forEmitOf<T = any>(emitter: SuperEmitter, options?: Options<T>) {
         if (options.limit && countEvents >= options.limit) {
           debugYieldLimit(options);
           shouldYield = false;
-        } else if (options.shouldCancel && options.shouldCancel()) {
-          shouldYield = false;
         }
       }
 

@@ -48,10 +48,6 @@ export interface Options<T = any> {
    * Default: false
    */
   debug?: boolean;
-  /**
-   * A callback to check if the iteration must be cancelled
-   */
-  shouldCancel?(): boolean;
 }
 
 export interface Context {
