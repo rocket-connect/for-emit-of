@@ -59,3 +59,9 @@ export function debugKeepAliveEnding(
     );
   }
 }
+
+export function debugIteratorReturn(options: Options) {
+  if (options.debug) {
+    console.log("Iterator return called and process finalized");
+  }
+}

@@ -8,6 +8,7 @@ import {
   debugRaceStart,
   debugRaceEnd,
   debugKeepAliveEnding,
+  debugIteratorReturn,
 } from "./debugging";
 import { Options, SuperEmitter, TimeoutRaceFactory, Context } from "./types";
 import { instant } from "./instant";
@@ -107,7 +108,10 @@ function forEmitOf<T = any>(
   options: Options<T>
 ): AsyncIterable<T>;
 
-function forEmitOf<T = any>(emitter: SuperEmitter, options?: Options<T>) {
+function forEmitOf<T = any>(
+  emitter: SuperEmitter,
+  options?: Options<T>
+): AsyncIterable<T> {
   if (!options) {
     options = defaults;
   }
@@ -150,6 +154,7 @@ function forEmitOf<T = any>(emitter: SuperEmitter, options?: Options<T>) {
     error = err;
   };
   const removeListeners = () => {
+    events = [];
     emitter.removeListener(options.event, eventListener);
     emitter.removeListener(options.error, errorListener);
     options.end.forEach((event) => emitter.removeListener(event, endListener));
@@ -161,11 +166,21 @@ function forEmitOf<T = any>(emitter: SuperEmitter, options?: Options<T>) {
 
   const getRaceItems = raceFactory<T>(options, emitter, context);
 
-  async function* generator() {
+  function generator() {
+    let completed = false;
     let shouldYield = true;
     let countEvents = 0;
     let countKeepAlive = 0;
     const start = process.hrtime();
+    async function runReturn(value?: any) {
+      if (!completed) {
+        shouldYield = false;
+        completed = true;
+        removeListeners();
+        debugIteratorReturn(options);
+      }
+      return { done: true, value } as IteratorResult<any>;
+    }
 
     if (
       options.keepAlive &&
@@ -187,46 +202,53 @@ function forEmitOf<T = any>(emitter: SuperEmitter, options?: Options<T>) {
     }
 
     context.lastResultAt = instant();
-    while (shouldYield && (events.length || active)) {
-      if (error) {
-        throw error;
-      }
+    return {
+      [Symbol.asyncIterator]() {
+        return {
+          async next(): Promise<IteratorResult<T>> {
+            if (error) {
+              throw error;
+            }
 
-      while (shouldYield && events.length > 0) {
-        debugYielding(options, events);
-        /* We do not want to block the process!
-            This call allows other processes
-            a chance to execute.
-        */
-        await sleep(0);
+            if (shouldYield && !events.length && active) {
+              debugRaceStart(options);
+              const winner = await Promise.race(getRaceItems());
+              debugRaceEnd(options, winner);
 
-        const [event, ...rest] = events;
-        events = rest;
+              if (winner === timedOut) {
+                removeListeners();
+                active = false;
+                throw Error("Event timed out");
+              }
+            }
+            if (!shouldYield || (events.length === 0 && !active)) {
+              return runReturn();
+            }
+            debugYielding(options, events);
+            /* We do not want to block the process!
+              This call allows other processes
+              a chance to execute.
+            */
+            await sleep(0);
 
-        yield options.transform ? options.transform(event) : event;
+            const [event, ...rest] = events;
+            events = rest;
+            countEvents++;
 
-        countEvents++;
+            if (options.limit && countEvents >= options.limit) {
+              debugYieldLimit(options);
+              shouldYield = false;
+            }
 
-        if (options.limit && countEvents >= options.limit) {
-          debugYieldLimit(options);
-          shouldYield = false;
-        }
-      }
-
-      if (active && !error) {
-        debugRaceStart(options);
-        const winner = await Promise.race(getRaceItems());
-        debugRaceEnd(options, winner);
-
-        if (winner === timedOut) {
-          removeListeners();
-          active = false;
-          throw Error("Event timed out");
-        }
-      }
-    }
-    active = false;
-    removeListeners();
+            return {
+              done: false,
+              value: options.transform ? options.transform(event) : event,
+            };
+          },
+          return: runReturn,
+        };
+      },
+    };
   }
 
   return generator();

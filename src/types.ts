@@ -60,3 +60,4 @@ export type SuperEmitter = (EventEmitter | Readable | Writable) & {
 };
 
 export type TimeoutRaceFactory = () => Array<Promise<void | symbol>>;
+export const Abort = Symbol("AbortIterable");
