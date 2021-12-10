@@ -184,7 +184,7 @@ function forEmitOf<T = any>(
     error = err;
   };
   const removeListeners = () => {
-    events = getQueue<T>();
+    events = getQueue();
     emitter.removeListener(options.event, eventListener);
     emitter.removeListener(options.error, errorListener);
     options.end.forEach((event) => emitter.removeListener(event, endListener));
