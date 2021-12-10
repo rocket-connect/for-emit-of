@@ -1,5 +1,5 @@
 import { EventEmitter } from "events";
-import { sleep } from "./sleep";
+import { breath } from "./sleep";
 import { timedOut, timeout } from "./timeout";
 import {
   debugKeepAlive,
@@ -271,15 +271,17 @@ function forEmitOf<T = any>(
               debugYieldLimit(options);
               shouldYield = false;
             }
-            const result = {
+            if (!options.noSleep) {
+              /* We do not want to block the process!
+                This call allows other processes
+                a chance to execute.
+              */
+              await breath();
+            }
+            return {
               done: false,
               value: options.transform ? options.transform(event) : event,
             };
-            return options.noSleep
-              ? result
-              : new Promise<any>((resolve) =>
-                  setImmediate(() => resolve(result))
-                );
           },
           return: runReturn,
         };
