@@ -20,6 +20,7 @@ const defaults = {
   end: ["close", "end"],
   keepAlive: 0,
   debug: false,
+  noSleep: false,
 };
 
 function waitResponse<T = any>(
@@ -262,11 +263,6 @@ function forEmitOf<T = any>(
               return runReturn();
             }
             debugYielding(options, events);
-            /* We do not want to block the process!
-              This call allows other processes
-              a chance to execute.
-            */
-            await sleep(0);
 
             const event = events.shift();
             countEvents++;
@@ -275,11 +271,15 @@ function forEmitOf<T = any>(
               debugYieldLimit(options);
               shouldYield = false;
             }
-
-            return {
+            const result = {
               done: false,
               value: options.transform ? options.transform(event) : event,
             };
+            return options.noSleep
+              ? result
+              : new Promise<any>((resolve) =>
+                  setImmediate(() => resolve(result))
+                );
           },
           return: runReturn,
         };

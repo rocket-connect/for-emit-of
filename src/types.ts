@@ -48,6 +48,10 @@ export interface Options<T = any> {
    * Default: false
    */
   debug?: boolean;
+  /**
+   * Disable sleeping between iterations
+   */
+  noSleep?: boolean;
 }
 
 export interface Context {
