@@ -263,6 +263,13 @@ function forEmitOf<T = any>(
               return runReturn();
             }
             debugYielding(options, events);
+            if (!options.noSleep) {
+              /* We do not want to block the process!
+                This call allows other processes
+                a chance to execute.
+              */
+              await breath();
+            }
 
             const event = events.shift();
             countEvents++;
@@ -270,13 +277,6 @@ function forEmitOf<T = any>(
             if (options.limit && countEvents >= options.limit) {
               debugYieldLimit(options);
               shouldYield = false;
-            }
-            if (!options.noSleep) {
-              /* We do not want to block the process!
-                This call allows other processes
-                a chance to execute.
-              */
-              await breath();
             }
             return {
               done: false,
