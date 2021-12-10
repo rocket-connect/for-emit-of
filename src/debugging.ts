@@ -1,3 +1,4 @@
+import { Queue } from "./queue";
 import { Options } from "./types";
 
 export function debugRaceEnd(options: Options, winner: symbol | void) {
@@ -20,7 +21,7 @@ export function debugYieldLimit(options: Options) {
   }
 }
 
-export function debugYielding(options: Options, events: any[]) {
+export function debugYielding(options: Options, events: Queue) {
   if (options.debug) {
     console.log(`Results to yield: ${events.length}`);
   }

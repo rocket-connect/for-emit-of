@@ -611,7 +611,7 @@ describe("forEmitOf", () => {
         }
       }
 
-      expect(debugging.debugYielding).to.have.been.calledTwice;
+      expect(debugging.debugYielding).to.have.been.calledOnce;
       expect(debugging.debugIteratorReturn).to.have.been.called;
       expect(result).to.be.eq("[1] [2] ");
       expect(counter).to.be.eq(2);
