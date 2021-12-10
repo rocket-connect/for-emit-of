@@ -278,6 +278,7 @@ function forEmitOf<T = any>(
               debugYieldLimit(options);
               shouldYield = false;
             }
+
             return {
               done: false,
               value: options.transform ? options.transform(event) : event,
