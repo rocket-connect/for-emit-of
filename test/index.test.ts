@@ -404,6 +404,36 @@ describe("forEmitOf", () => {
       );
     });
 
+    it("event processing must be blocking when noSleep is true", async () => {
+      const emitter = new EventEmitter();
+
+      const iterator = forEmitOf<{ message: string }>(emitter, {
+        noSleep: true,
+      });
+
+      let result = "";
+      setTimeout(async () => {
+        emitter.emit("data", { message: "test1" });
+        emitter.emit("data", { message: "test2" });
+        emitter.emit("data", { message: "test3" });
+        emitter.emit("data", { message: "test4" });
+        emitter.emit("end");
+      }, 10);
+
+      await sleep(10);
+      for await (const chunk of iterator) {
+        setImmediate(async () => {
+          result += ` ${chunk.message}a `;
+        });
+        result += chunk.message;
+      }
+      await sleep(0);
+
+      expect(result).to.equal(
+        "test1test2test3test4 test1a  test2a  test3a  test4a "
+      );
+    });
+
     it("event processing must emit even falsy values", async () => {
       const emitter = new EventEmitter();
 
@@ -611,7 +641,7 @@ describe("forEmitOf", () => {
         }
       }
 
-      expect(debugging.debugYielding).to.have.been.calledTwice;
+      expect(debugging.debugYielding).to.have.been.calledOnce;
       expect(debugging.debugIteratorReturn).to.have.been.called;
       expect(result).to.be.eq("[1] [2] ");
       expect(counter).to.be.eq(2);

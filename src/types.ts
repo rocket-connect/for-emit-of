@@ -48,6 +48,13 @@ export interface Options<T = any> {
    * Default: false
    */
   debug?: boolean;
+  /**
+   * Disable sleeping between iterations. Warning! Enabling this option can make the iteration block
+   * the event loop, depending of what you do in each operation. Use that only if you know what you're
+   * doing or is not a issue for you that other processes doesn't step forward while your forEmitOf
+   *  iterable is being iterated.
+   */
+  noSleep?: boolean;
 }
 
 export interface Context {
